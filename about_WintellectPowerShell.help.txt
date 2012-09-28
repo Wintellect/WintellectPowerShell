@@ -19,24 +19,28 @@ LONG DESCRIPTION
                  
     The following cmdlets are included.
 
-        Cmdlet					Description
-        ------------------		----------------------------------------------
-        Set-SymbolServer        Sets up a computer to use a symbol server.
+        Cmdlet					    Description
+        ------------------		    ----------------------------------------------
+        Set-SymbolServer            Sets up a computer to use a symbol server.
         
-        Get-SymbolServer        Returns a hashtable of the current symbol server settings.
+        Get-SymbolServer            Returns a hashtable of the current symbol server settings.
 
-        Set-SourceServer        Sets the source server directory.
+        Set-SourceServer            Sets the source server directory.
 
-        Get-SourceServer        Returns a hashtable of the current source server settings
+        Get-SourceServer            Returns a hashtable of the current source server settings
         
-        Get-SourceServerFiles   Prepopulate your symbol cache with all your Source Server extracted source 
-                                code.
+        Get-SourceServerFiles       Prepopulate your symbol cache with all your Source Server extracted source 
+                                    code.
                 
-        Get-SysinternalsSuite   Gets all the wonderful Sysinternals tools
+        Get-SysinternalsSuite       Gets all the wonderful Sysinternals tools
         
-        Get-Uptime              Returns how long a computer has been running.
+        Get-Uptime                  Returns how long a computer has been running.
         
-        Expand-ZipFile          Expands a .ZIP file to the specified directory.
+        Expand-ZipFile              Expands a .ZIP file to the specified directory.
+
+        Test-PathReg                Utility function to test is a registry key property exists in a key.
+
+        Remove-IntelliTraceFiles    Removes no longer needed IntelliTrace files.
         
 SEE ALSO
     Online help and updates: http://www.wintellect.com/CS/blogs/jrobbins/default.aspx
@@ -48,3 +52,4 @@ SEE ALSO
     Get-SysinternalsSuite
     Get-Uptime
     Expand-ZipFile
+    Test-PathReg

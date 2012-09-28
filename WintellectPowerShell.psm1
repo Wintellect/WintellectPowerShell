@@ -450,11 +450,100 @@ function Get-Uptime
 
 Export-ModuleMember Get-Uptime
 ###############################################################################
+
+function Test-PathReg
+{
+<#
+.EXTERNALHELP WintellectPowerShell.psm1-help.xml
+#>
+    param (
+        [Parameter(mandatory=$true,position=0)]
+        [string]$Path,
+        [Parameter(mandatory=$true,position=1)]
+        [string]$Property )
+
+
+    $compare = (Get-ItemProperty -LiteralPath $Path).psbase.members | `
+                    %{$_.name} | `
+                    compare $Property -IncludeEqual -ExcludeDifferent
+    if($compare -eq $null)
+    {
+        return $false
+    }
+    if($compare.SideIndicator -like "==") 
+    {
+        return $true
+    }
+    else
+    {
+        return $false
+    }
+}
+Export-ModuleMember Test-PathReg
+###############################################################################
+
+function Remove-IntelliTraceFiles
+{
+<#
+.EXTERNALHELP WintellectPowerShell.psm1-help.xml
+#>
+    [CmdLetBinding(SupportsShouldProcess=$true)]
+    param ( [switch] $VS2010 )
+
+    # First check if VS is running. If so, we can't continue as it may be using
+    # the .iTrace files.
+    $proc = Get-Process devenv -ErrorAction SilentlyContinue
+    if ($proc -ne $null)
+    {
+        throw "Visual Studio is running. Please close all instances."
+    }
+
+    # Default to VS 2012.
+    $vsVersion = "11.0"
+    if ($VS2010)
+    {
+        $vsVersion = "10.0"
+    }
+
+    $regKey = "HKCU:\Software\Microsoft\VisualStudio\" + 
+              $vsVersion + 
+              "\DialogPage\Microsoft.VisualStudio.TraceLogPackage.ToolsOptionAdvanced"
+
+    # Check to see if the user has set the options to save files. If not bail out.
+    if ( ((Test-PathReg $regKey "SaveRecordings") -eq $false) -or ((Get-ItemProperty $regKey).SaveRecordings -eq "False"))
+    {
+        throw "You have not configured IntelliTrace to save recordings. " +
+              "In the Options dialog, IntelliTtrace Advanced page, check the " +
+              "Store IntelliTrace recordings in this directory check box."
+    }
+    
+    $storageDir = ""
+    if ((Test-PathReg $regKey "RecordingPath") -ne $false)
+    {
+        # Get the storage directory for those files.
+        $storageDir = (Get-ItemProperty $regKey).RecordingPath
+    }
+
+    if ($storageDir.Length -eq 0)
+    {
+        throw "The IntelliTrace recording directory is empty. Check the " +
+              "Options dialog, IntelliTrace Advanced page to set the "+
+              "directory."
+    }
+
+    # Clean up those files but only do the ones in the main directory so if the
+    # user may have created paths and put other files there we don't delete those.
+    Get-ChildItem -Path $storageDir -Filter "*.iTrace" | Remove-Item -Force
+}
+
+Export-ModuleMember Remove-IntelliTraceFiles
+###############################################################################
+
 # SIG # Begin signature block
 # MIIO0QYJKoZIhvcNAQcCoIIOwjCCDr4CAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUx+fuE1dx8wPcMo5ZYcb5azj9
-# xl+gggmnMIIEkzCCA3ugAwIBAgIQR4qO+1nh2D8M4ULSoocHvjANBgkqhkiG9w0B
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUQNM3F8HZ8R8D4HdVpFYItVY0
+# A+qgggmnMIIEkzCCA3ugAwIBAgIQR4qO+1nh2D8M4ULSoocHvjANBgkqhkiG9w0B
 # AQUFADCBlTELMAkGA1UEBhMCVVMxCzAJBgNVBAgTAlVUMRcwFQYDVQQHEw5TYWx0
 # IExha2UgQ2l0eTEeMBwGA1UEChMVVGhlIFVTRVJUUlVTVCBOZXR3b3JrMSEwHwYD
 # VQQLExhodHRwOi8vd3d3LnVzZXJ0cnVzdC5jb20xHTAbBgNVBAMTFFVUTi1VU0VS
@@ -511,24 +600,24 @@ Export-ModuleMember Get-Uptime
 # Oi8vd3d3LnVzZXJ0cnVzdC5jb20xHTAbBgNVBAMTFFVUTi1VU0VSRmlyc3QtT2Jq
 # ZWN0AhA/+9ToTVeBHv2GK8w5hdxbMAkGBSsOAwIaBQCgeDAYBgorBgEEAYI3AgEM
 # MQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwGCisGAQQB
-# gjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBRw9L8RwhOPTp3u
-# 474PNPm7lXLEqDANBgkqhkiG9w0BAQEFAASCAQALrwT6PYQJvJhcHrWIFYWp2aaF
-# La2PfZVZC0hOBwYmWyUQQM6UpagYAxRjMVMmk3mcpzqYbd7eNeCA7TmYR8eLsLsj
-# Za9kKkZXQDr5E5RKiudGk9Fw9uRsEKY7KTcBozMNc+2sCxcoggrBU85Z+nCc7gs9
-# lDDk3WVCIMOaLSerERD+pnZru5WDJDn3mRJK6/mfTNT5X8FzqF1roI0Ic0bVuLeD
-# Cbh2UNciBZqeD284K0c/327TI2XMfVaVxe71HiPVbTkbrqK/O5AbS7V4fByCKJ/K
-# ZWpPqktYAN6W+04PgUjABaSJtCgMQqh8Czp0pBAwR+6k5tvfbQd4jyU3til/oYIC
+# gjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBTsCpBAF2yk2Urg
+# 4tWuGLfMmO7F5TANBgkqhkiG9w0BAQEFAASCAQCiDXsHkQukDMKL2LzqkQn+yedO
+# 0ii1qiyKYv24gcMW/hAvjL1gAhOBno61HBjXYsJuS9AVmhrc6YpasHEKVnuxfXGa
+# vVqTN9QIJWOpfUBkqTiu5OfItMhEiy9VFM/+WQW1I8OZYvVw06dyTnr0WMK7Em0o
+# LfQ8RD3KElaIVwnLCCQDVoc6VO72VSUbpgykNzQNVJAE5+HinmiB9SYKYnkTEGjz
+# aRTHD2XTfWtNrxMSFOdgBlONcP6+DbC5VxTktj6n3dPw/7WkApqIg0QYjl4wHkp6
+# k4VZf4KZ2sXCumvEEzATcL+oglwTvQw7zC7GueYwH0IQqs7JSt306c4sWI+3oYIC
 # RDCCAkAGCSqGSIb3DQEJBjGCAjEwggItAgEAMIGqMIGVMQswCQYDVQQGEwJVUzEL
 # MAkGA1UECBMCVVQxFzAVBgNVBAcTDlNhbHQgTGFrZSBDaXR5MR4wHAYDVQQKExVU
 # aGUgVVNFUlRSVVNUIE5ldHdvcmsxITAfBgNVBAsTGGh0dHA6Ly93d3cudXNlcnRy
 # dXN0LmNvbTEdMBsGA1UEAxMUVVROLVVTRVJGaXJzdC1PYmplY3QCEEeKjvtZ4dg/
 # DOFC0qKHB74wCQYFKw4DAhoFAKBdMBgGCSqGSIb3DQEJAzELBgkqhkiG9w0BBwEw
-# HAYJKoZIhvcNAQkFMQ8XDTEyMDcwNjIzMTk0M1owIwYJKoZIhvcNAQkEMRYEFDTc
-# lq30nAJz1Z/FpnDDbKhso/P+MA0GCSqGSIb3DQEBAQUABIIBADMIuzVOIuyeg2M/
-# au8NSfITXW6fyESQoP6IoQ9mfD/s/XoetPsDOtlfkr3hREQKe+p7VBcey7P+5MNk
-# 5RA3gB2smrWMS+vp/Ih0OIe7x/c2SGL/Xd/NT937YkfkiSoEfQBBDMGW3BETQ28I
-# BJfSD09Skg994bZ7OIB7iEY6XeIdVjwKFpqc1dx9bfRCvdPijEhdBzyvZ0IIgiN3
-# b8Fgi8x3kEWn21DnMnzUMQtw0GGYLB3MI9f+ocYtlkbvYHnJ57HtAcgRHVzbqry+
-# c9ehJov2KHK+6IuVFelMcvPbjWTrPqjLBkrQhTnQo/Auyhqp3sA8u9m+sLzfTner
-# 28eDOr8=
+# HAYJKoZIhvcNAQkFMQ8XDTEyMDkyODIzMTMxM1owIwYJKoZIhvcNAQkEMRYEFIQc
+# oKn56DLCTS7Eob2DZI+1NMUJMA0GCSqGSIb3DQEBAQUABIIBALl1ZPHSbbK2DFBH
+# QKitAdnQMInZzY8adgc538suiuWFJ2cnghJAw7EKl9pQGRNW0D2wT3JycffYzRLU
+# JfCyd7hboFqoKPijf2orv2Al2DWGnwodKtAj3BoYMGVLg45D1i+uiSfgEisE1ikW
+# x9hQJGBV8AN8zTbO5F+YZ3zuliHZ/INiv3H7AByrXPrFd7X8sM/d1pxNFdhOGZjp
+# c2F7f2aT1tY6wRL0o1cHEHRUG9KU5CvmVvFb335H4cA9iqk2wAWOiBzxFFM5rx8C
+# xRk+/1Y5hZFUiUK0fAyNTcGc9WHnIuAYZPbVWtT5w3MAYeFhRovTrbb1t0nCHL7W
+# ce8JZ+8=
 # SIG # End signature block
