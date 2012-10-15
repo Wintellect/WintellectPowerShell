@@ -47,6 +47,10 @@ Here's the about text showing all cmdlets. Of course, all cmdlets have detailed 
             Test-PathReg                Utility function to test is a registry key property exists in a key.
 
             Remove-IntelliTraceFiles    Removes no longer needed IntelliTrace files.
+
+            Get-Hash                    Returns the crytographic hash values for files or strings.
+
+            Compare-Directories         Compares two directories.
             
     SEE ALSO
         Online help and updates: http://www.wintellect.com/CS/blogs/jrobbins/default.aspx
@@ -59,3 +63,5 @@ Here's the about text showing all cmdlets. Of course, all cmdlets have detailed 
         Get-Uptime
         Expand-ZipFile
         Test-PathReg
+        Get-Hash
+        Compare-Directories

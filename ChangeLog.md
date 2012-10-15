@@ -1,5 +1,11 @@
 # Wintellect PowerShell Change Log #
 
+## October 14, 2012 ##
+Added the following cmdlets:
+Compare-Directories - Can compare directories to see if they contain the same filenames as well as the same content.
+
+Get-Hash - Gets the cryptographic hash for a file or string.
+
 ## September 29, 2012 ##
 Added the following cmdlets:
 

@@ -539,11 +539,236 @@ function Remove-IntelliTraceFiles
 Export-ModuleMember Remove-IntelliTraceFiles
 ###############################################################################
 
+function Get-Hash
+{
+<#
+.EXTERNALHELP WintellectPowerShell.psm1-help.xml
+#>
+
+# Influenced by Bill Stewart: http://www.windowsitpro.com/article/scripting/calculate-file-hashes-powershell-139518
+    [CmdletBinding(DefaultParameterSetName = "Path")] 
+    param( 
+    [Parameter(ParameterSetName="Path",
+               Position = 0,
+               Mandatory = $true,
+               ValueFromPipeline = $true,
+               ValueFromPipelineByPropertyName = $true)] 
+    [String[]] $Path, 
+    
+    [Parameter(ParameterSetName = "LiteralPath",
+               Position = 0,
+               Mandatory = $true)] 
+    [String[]] $LiteralPath, 
+    
+    [Parameter(Position = 1)] 
+    [ValidateSet("SHA1","MD5","SHA256","SHA384","SHA512")]
+    [String] $HashType = "MD5", 
+
+    [Parameter(Position=2)]
+    [ValidateSet("ASCII","BigEndianUnicode","Default","Unicode","UTF32","UTF7","UTF8")]
+    [String] $Encoding = "Default"
+
+) 
+
+begin
+{
+    if ($PSCMDLET.ParameterSetName -eq "Path") 
+    { 
+        $PipeLineInput = -not $PSBOUNDPARAMETERS.ContainsKey("Path")
+    } 
+
+    $cryptoAlgo = [System.Security.Cryptography.HashAlgorithm]::Create($HashType)
+
+    function GetEncoding()
+    {
+        switch($Encoding)
+        {
+            "ASCII" { return [System.Text.Encoding]::ASCII }
+            "BigEndianUnicode" { return [System.Text.Encoding]::BigEndianUnicode }
+            "Default" { return [System.Text.Encoding]::Default }
+            "Unicode" { return [System.Text.Encoding]::Unicode }
+            "UTF32" { return [System.Text.Encoding]::UTF32 }
+            "UTF7" { return [System.Text.Encoding]::UTF7 }
+            "UTF8" { return [System.Text.Encoding]::UTF8 }
+        }
+    }
+
+    function DoHash($val)
+    {
+        $sb = New-Object System.Text.StringBuilder
+
+        if ($val -is [System.IO.FileInfo])
+        {
+            $stream = [System.IO.File]::OpenRead($val.FullName)
+
+            try
+            {
+                $cryptoAlgo.ComputeHash($stream) | ForEach-Object { [void]$sb.Append($_.ToString("X2")) }
+            }
+            finally
+            {
+                if ($stream -ne $null)
+                {
+                    $stream.Close()
+                }
+            }
+
+        }
+        else
+        {
+            # Treat it at a string.
+            [string]$stringVal = $val
+            $enc = GetEncoding
+            $bytes = $enc.GetBytes($stringVal)
+
+            $cryptoAlgo.ComputeHash($bytes) | ForEach-Object { [void]$sb.Append($_.ToString("X2")) }
+            
+        }
+        $sb.ToString();
+    }
+}
+process
+{
+    if ($PSCMDLET.ParameterSetName -eq "Path") 
+    { 
+        if ($PipeLineInput) 
+        {
+            DoHash $_
+        }
+        else
+        {
+            get-item $Path -force | foreach-object { DoHash $_ } 
+        } 
+    }
+    else
+    {
+        $file = get-item -literalpath $LiteralPath 
+        if ($file) 
+        {
+            DoHash $file
+        }
+    }
+}
+    
+}
+
+Export-ModuleMember Get-Hash
+###############################################################################
+
+function Compare-Directories
+{
+<#
+.EXTERNALHELP WintellectPowerShell.psm1-help.xml
+#>
+    param (
+        [Parameter(Mandatory=$true)]
+        [string] $OriginalDir,
+        [Parameter(Mandatory=$true)]
+        [string] $NewDir,
+        [string[]] $Excludes,
+        [switch] $Recurse,
+        [switch] $Force,
+        [switch] $Content
+        )
+
+    if ((Test-Path $OriginalDir) -eq $false)
+    {
+        throw "$OriginalDir does not exist"
+    }
+
+    if ((Test-Path $NewDir) -eq $false)
+    {
+        throw "$NewDir does not exist"
+    }
+    
+    # I need the real paths for the two input directories.
+    $OriginalDir = (Resolve-Path $OriginalDir).ToString().Trim("\")
+    $NewDir = (Resolve-Path $NewDir).ToString().Trim("\")
+
+    # Do the work to find all the files.
+    $origFiles = Get-ChildItem -Path $OriginalDir -Recurse:$Recurse -Force:$Force -Exclude $Excludes
+    $newFiles = Get-ChildItem -Path $NewDir -Recurse:$Recurse -Force:$Force -Exclude $Excludes
+
+    # Here I'm going to strip off the initial directories and leave the names. Thus if
+    # the OriginalDir was C:\FOO and one of the files is C:\FOO\BAR.TXT, the result would
+    # be BAR.TXT (C:\FOO\BAZ\Z.TXT -> BAZ\Z.TXT. This will make it easier for content checking. 
+    # The issue is that by doing the content checking on the default return type from 
+    # Compare-Object, I'd lose the relativeness of the filenames. By forcing the data 
+    # to be the relative filenames from input I can do the content comparisons much easier.
+    $origFiles = $origFiles | ForEach-Object { $_.FullName.Remove(0,$OriginalDir.Length+1) }
+    $newFiles = $newFiles | ForEach-Object { $_.FullName.Remove(0,$NewDir.Length+1) }
+ 
+    # If either return is empty, create an empty array so I can return correct data.
+    if ($origFiles -eq $null)
+    {
+        $origFiles = @()
+    }
+    if ($newFiles -eq $null)
+    {
+        $newFiles = @()
+    }
+
+    # Now do the comparisons on the names only.
+    $nameComp = Compare-Object -ReferenceObject $origFiles -DifferenceObject $newFiles
+
+    # The hash we are going to return.
+    $resultHash = @{}
+    
+    # If there's no differences, $nameComp is null.
+    if ($nameComp -ne $null)
+    {
+        # Push the PSCustomObject type into a resultHash table so content checking can put it's custom
+        # results into the table.
+        $nameComp | ForEach-Object { $resultHash[$_.InputObject] = $_.SideIndicator}
+    }
+
+    # if comparing the content
+    if ($Content)
+    {
+        # Get just the matching values by calling Compare-Object -ExcludeDifferent -IncludeEqual.
+        # Note that I'm using -PassThru here because I want result to be the identical filenames, not the
+        # normal custom object returned by Compare-Object.
+        $sameFiles = Compare-Object -ReferenceObject $origFiles -DifferenceObject $newFiles -IncludeEqual -ExcludeDifferent -PassThru
+
+        foreach($file in $sameFiles)
+        {
+        
+            # Build up the paths to the original file and the new file.
+            $orig = $OriginalDir
+            $orig += "\" + $file 
+
+            # Am I about to check a directory that's in both places? If so, skip it because the
+            # hash will be different because the strings are different.
+            if ((Get-Item $orig) -is [System.IO.DirectoryInfo])
+            {
+                continue 
+            }
+
+            $new = $NewDir 
+            $new += "\" + $file
+
+            $origHash = Get-Hash $orig
+            $newHash = Get-Hash $new
+
+            if ($origHash -ne $newHash)
+            {
+                $resultHash[$file] = "!="
+            }
+        }
+    }
+
+    # Nice trick to get the hash sorted by Name so it's easier to read.
+    $resultHash.GetEnumerator()  | Sort-Object -Property Name
+}
+
+Export-ModuleMember Compare-Directories
+###############################################################################
+
 # SIG # Begin signature block
 # MIIO0QYJKoZIhvcNAQcCoIIOwjCCDr4CAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUQNM3F8HZ8R8D4HdVpFYItVY0
-# A+qgggmnMIIEkzCCA3ugAwIBAgIQR4qO+1nh2D8M4ULSoocHvjANBgkqhkiG9w0B
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUTcc79cEfXgizDdmwbmXuEu1Y
+# TlOgggmnMIIEkzCCA3ugAwIBAgIQR4qO+1nh2D8M4ULSoocHvjANBgkqhkiG9w0B
 # AQUFADCBlTELMAkGA1UEBhMCVVMxCzAJBgNVBAgTAlVUMRcwFQYDVQQHEw5TYWx0
 # IExha2UgQ2l0eTEeMBwGA1UEChMVVGhlIFVTRVJUUlVTVCBOZXR3b3JrMSEwHwYD
 # VQQLExhodHRwOi8vd3d3LnVzZXJ0cnVzdC5jb20xHTAbBgNVBAMTFFVUTi1VU0VS
@@ -600,24 +825,24 @@ Export-ModuleMember Remove-IntelliTraceFiles
 # Oi8vd3d3LnVzZXJ0cnVzdC5jb20xHTAbBgNVBAMTFFVUTi1VU0VSRmlyc3QtT2Jq
 # ZWN0AhA/+9ToTVeBHv2GK8w5hdxbMAkGBSsOAwIaBQCgeDAYBgorBgEEAYI3AgEM
 # MQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwGCisGAQQB
-# gjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBTsCpBAF2yk2Urg
-# 4tWuGLfMmO7F5TANBgkqhkiG9w0BAQEFAASCAQCiDXsHkQukDMKL2LzqkQn+yedO
-# 0ii1qiyKYv24gcMW/hAvjL1gAhOBno61HBjXYsJuS9AVmhrc6YpasHEKVnuxfXGa
-# vVqTN9QIJWOpfUBkqTiu5OfItMhEiy9VFM/+WQW1I8OZYvVw06dyTnr0WMK7Em0o
-# LfQ8RD3KElaIVwnLCCQDVoc6VO72VSUbpgykNzQNVJAE5+HinmiB9SYKYnkTEGjz
-# aRTHD2XTfWtNrxMSFOdgBlONcP6+DbC5VxTktj6n3dPw/7WkApqIg0QYjl4wHkp6
-# k4VZf4KZ2sXCumvEEzATcL+oglwTvQw7zC7GueYwH0IQqs7JSt306c4sWI+3oYIC
+# gjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBSLt3hKBtUoN8Rn
+# Qi6hIk4Ts+Yc3TANBgkqhkiG9w0BAQEFAASCAQAoNkUO1uFtQ075lLsFKnRctXfG
+# DGYCWtLq0VtXNWFupeN8fNnAi0J60ADsIG5smE3WmtYiXaPzEhJmdQy6vLP9slAp
+# wcDt4oyNX1ijpAnPlwbzB5ulqEws/ZoAvHLcGBHEWlKqhhomBKGuRU1NCuuL2xZk
+# dZZxd9/jSgYqg99yNCvz3oHN7uu2LaIJd9f9THxZAQHcIkfmOfum5JH/l3McTYTw
+# NEr1FHvS6YAUEQNmRx4qJatsqI6KKqOqOTwfLafkzinQvB7pKE6K0Jwrwd1L3vkO
+# 3u7uzs1PPKeUEfbr4miV1e+lBuH4ZJ0lSSWffjIpnXNOqrWSbfU56J6rxVtCoYIC
 # RDCCAkAGCSqGSIb3DQEJBjGCAjEwggItAgEAMIGqMIGVMQswCQYDVQQGEwJVUzEL
 # MAkGA1UECBMCVVQxFzAVBgNVBAcTDlNhbHQgTGFrZSBDaXR5MR4wHAYDVQQKExVU
 # aGUgVVNFUlRSVVNUIE5ldHdvcmsxITAfBgNVBAsTGGh0dHA6Ly93d3cudXNlcnRy
 # dXN0LmNvbTEdMBsGA1UEAxMUVVROLVVTRVJGaXJzdC1PYmplY3QCEEeKjvtZ4dg/
 # DOFC0qKHB74wCQYFKw4DAhoFAKBdMBgGCSqGSIb3DQEJAzELBgkqhkiG9w0BBwEw
-# HAYJKoZIhvcNAQkFMQ8XDTEyMDkyODIzMTMxM1owIwYJKoZIhvcNAQkEMRYEFIQc
-# oKn56DLCTS7Eob2DZI+1NMUJMA0GCSqGSIb3DQEBAQUABIIBALl1ZPHSbbK2DFBH
-# QKitAdnQMInZzY8adgc538suiuWFJ2cnghJAw7EKl9pQGRNW0D2wT3JycffYzRLU
-# JfCyd7hboFqoKPijf2orv2Al2DWGnwodKtAj3BoYMGVLg45D1i+uiSfgEisE1ikW
-# x9hQJGBV8AN8zTbO5F+YZ3zuliHZ/INiv3H7AByrXPrFd7X8sM/d1pxNFdhOGZjp
-# c2F7f2aT1tY6wRL0o1cHEHRUG9KU5CvmVvFb335H4cA9iqk2wAWOiBzxFFM5rx8C
-# xRk+/1Y5hZFUiUK0fAyNTcGc9WHnIuAYZPbVWtT5w3MAYeFhRovTrbb1t0nCHL7W
-# ce8JZ+8=
+# HAYJKoZIhvcNAQkFMQ8XDTEyMTAxNTAxMTczN1owIwYJKoZIhvcNAQkEMRYEFAOZ
+# rA80EJEYk9QDhMLwDDIFpsO4MA0GCSqGSIb3DQEBAQUABIIBAKhYY2rKe+GEiCf7
+# i1WN7CBNZB+O+CgBQ4hGFr4k4c6qHGDmufMVGWY2XEeNkYKOzk8+B8n9isoaQQVv
+# dA2xsqWGIgGNZJPctMkYsMEXb+VT0/yrpesb2U1Nzkf8zHIF85KzCWLtIfYg7zTp
+# tkbu8jPhhvK6Vg3UqYt41qtPWo9zVjinTSkhr4QKMM/tKmwtYJ5pYpSVExnrXJIp
+# PXcwWdE6XxnZjBljcu3BoGrrISgjk5gi1+JOboJ/4PGXIPO9hUfchB40yFhUnb+h
+# SR157/j81LberOhrwzUgTAKUkLfgf8B/ivcFPmyDhvNSA6w4IIuqGRZmE6SXbslF
+# iE9XELM=
 # SIG # End signature block
