@@ -1,21 +1,33 @@
-#requires -version 2.0
-###############################################################################
-# WintellectPowerShell Module
-# Copyright (c) 2010-2013 - John Robbins/Wintellect
-# 
-# Do whatever you want with this module, but please do give credit.
-###############################################################################
+function Merge-HashTables($htold, $htnew)
+{
+<#
+.SYNOPSIS
+Merges two has tables based on their keys.
 
-# Sub module directory
-$script:CodeDirectory = "$psScriptRoot\Code"
+.DESCRIPTION
+Thanks jon Z!
 
-Get-ChildItem -Path $script:CodeDirectory -Filter *.psm1 | `
-    ForEach-Object { Import-Module $_.FullName }
+.LINK
+http://stackoverflow.com/questions/8800375/merging-hashtables-in-powershell-how
+#>
+    $keys = $htold.getenumerator() | foreach-object {$_.key}
+    $keys | foreach-object {
+        $key = $_
+        if ($htnew.containskey($key))
+        {
+            $htold.remove($key)
+        }
+    }
+    $htnew = $htold + $htnew
+    return $htnew
+}
+
+
 # SIG # Begin signature block
 # MIIO0QYJKoZIhvcNAQcCoIIOwjCCDr4CAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU6/HR0coug2+T0+EMnVsi/Pbe
-# E0SgggmnMIIEkzCCA3ugAwIBAgIQR4qO+1nh2D8M4ULSoocHvjANBgkqhkiG9w0B
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU2T1ISgHngaJ7GQywlT5LQtDD
+# BjagggmnMIIEkzCCA3ugAwIBAgIQR4qO+1nh2D8M4ULSoocHvjANBgkqhkiG9w0B
 # AQUFADCBlTELMAkGA1UEBhMCVVMxCzAJBgNVBAgTAlVUMRcwFQYDVQQHEw5TYWx0
 # IExha2UgQ2l0eTEeMBwGA1UEChMVVGhlIFVTRVJUUlVTVCBOZXR3b3JrMSEwHwYD
 # VQQLExhodHRwOi8vd3d3LnVzZXJ0cnVzdC5jb20xHTAbBgNVBAMTFFVUTi1VU0VS
@@ -72,24 +84,24 @@ Get-ChildItem -Path $script:CodeDirectory -Filter *.psm1 | `
 # Oi8vd3d3LnVzZXJ0cnVzdC5jb20xHTAbBgNVBAMTFFVUTi1VU0VSRmlyc3QtT2Jq
 # ZWN0AhA/+9ToTVeBHv2GK8w5hdxbMAkGBSsOAwIaBQCgeDAYBgorBgEEAYI3AgEM
 # MQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwGCisGAQQB
-# gjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQVmSj0UTKJt59p
-# VIW9OpDRf9F6ZTANBgkqhkiG9w0BAQEFAASCAQCbuP67bZwK9r0Jl1fQyeTPuYfM
-# R2E9VVsZox9fdy6DnI70jEbfMU/Xod3nsdBPojkxU1Qmo3+sS4Txyfw5YFwtB583
-# Sn63pz2TnvYb57wKf7xTWcu23jXX00RWuCH0++p3RqB7uaCsYZ9ZLV2iakbBFXjy
-# HrQlrO6yZo4yeesvWguRIj3CvEICMQ5caR3MEXAIh1YUQ4pKEQ1OzBWCQXA6hLI2
-# 6Obn5zcb2WySqcGEHV+rMxlCSI2yvF0qiFBJDH/TDWmjkYi/NdlwyJkNjjS2KSTY
-# oeEsrWusp2Hk7TgGYdEtway+V7KFXO6AAnq+h/V16OQmV0Vf1a0C5j6auElioYIC
+# gjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQKuUKMx4Z1B/1t
+# RETQjqjtiTFUojANBgkqhkiG9w0BAQEFAASCAQA/rQbSuhYDmRpygzWTuWc8iqX0
+# i6InCbIT6pnqlM+e4EncUpP0rccKvJiBqsFpqmpTtnstOO945VeVZehHc1otUMIy
+# X/AD7bDcO+zu3lqxFp77YY6AjfpsdMzMPU6XF3YcjynPUTw7NKqYpjKALMlGwXEX
+# jWSS0kA3/m2JqQgrS42xNag6FTcMy507ZbKxYp4/Li6w6Zt83+6sj2lwjd5vErzo
+# D8mVed6wI6doJp3kjvM69+i2Pg0LMH+IeArkamdWSdNr3x9GZEQw2Xl89oVs+xA4
+# 85oFTL9yCCD5el99DNdBnv4m4Qg0cCe4fa4Di4bmtG4pWZ81hlMxjgoA+awRoYIC
 # RDCCAkAGCSqGSIb3DQEJBjGCAjEwggItAgEAMIGqMIGVMQswCQYDVQQGEwJVUzEL
 # MAkGA1UECBMCVVQxFzAVBgNVBAcTDlNhbHQgTGFrZSBDaXR5MR4wHAYDVQQKExVU
 # aGUgVVNFUlRSVVNUIE5ldHdvcmsxITAfBgNVBAsTGGh0dHA6Ly93d3cudXNlcnRy
 # dXN0LmNvbTEdMBsGA1UEAxMUVVROLVVTRVJGaXJzdC1PYmplY3QCEEeKjvtZ4dg/
 # DOFC0qKHB74wCQYFKw4DAhoFAKBdMBgGCSqGSIb3DQEJAzELBgkqhkiG9w0BBwEw
-# HAYJKoZIhvcNAQkFMQ8XDTEzMDEyNzA4MDEzNFowIwYJKoZIhvcNAQkEMRYEFCbq
-# KjNyae3rBi7ZRkxsolAbVddDMA0GCSqGSIb3DQEBAQUABIIBAKupvf5NFZvNnvTz
-# wHYrPpPcqPCqs9B4LNO534c2ouJ4Bbe6WdWUlBGlDuJ00SjU8GSq4JZaRy8WJYln
-# LsmprkTqKe+x2n5oinRWetiRY+QlBK4a7F93YBh6VNAN4ZcSYM/RE52l7ojJF99Y
-# UiNzu9IolOD9S69mwqjkx6xIo/T5NsQu3FZ9qN5wkZE5xcRqoLdjNoS7pCN/3sSd
-# 9WM1S2OPWN2CcnihRoaOpD/i9xtEMiFzFiCmtKDZSnMm6IwjLtRBfYEadKxzXbtT
-# 2DR1J2KOhlOxyelFkJRi4arV0gSZQO5gb5RE+Ve+p5+Zx0I+b24YsetmcOVCR/3k
-# hzPcQEs=
+# HAYJKoZIhvcNAQkFMQ8XDTEzMDEyNzA4MDEzMlowIwYJKoZIhvcNAQkEMRYEFHfO
+# wbf2+gpiDPBAZjVik4Mf7DStMA0GCSqGSIb3DQEBAQUABIIBAK6VRS0JzhFlgm1W
+# RBqJQgNu/cEUj2whmfrG5pk+eGAkex51qGPxDfFKwkWfnCOWJcpeKwgtqavshfX1
+# hQ9y8MOnt+ABrRWLFRx7gSyADjg1zdJaruRoQCWiYHfXf3tuhOdxWkYZloU/Fni5
+# 28DlLQPwV4i/DPROc0dQsP3qv+csjse6G/00tqeCk13QtupOP4fNzC9iJhaSMtYK
+# zJoRc1W64Ox0xVzyUxqLfYpMZaJ8CeDX/njD4/N/5gDhTJo7VYUy4uRBjLpYYETJ
+# Ihk4QI+ZJgTYaPGA3c8fvlE0dRAlgp/YtdfAulgsat4ez6SeGzhGYj73HAGRCpSX
+# EFrX3jE=
 # SIG # End signature block

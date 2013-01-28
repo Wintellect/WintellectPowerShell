@@ -6,16 +6,47 @@
 # Do whatever you want with this module, but please do give credit.
 ###############################################################################
 
-# Sub module directory
-$script:CodeDirectory = "$psScriptRoot\Code"
+# Always make sure all variables are defined and all best practices are 
+# followed.
+Set-StrictMode -version Latest
 
-Get-ChildItem -Path $script:CodeDirectory -Filter *.psm1 | `
-    ForEach-Object { Import-Module $_.FullName }
+###############################################################################
+# Public Cmdlets
+###############################################################################
+function Get-Uptime
+{
+<#
+.SYNOPSIS
+Returns how long a computer has been running.
+
+.DESCRIPTION
+Returns the TimeSpan for how long a computer is running. If you'd like it 
+formatted you can use: (Get-Uptime) -f {0}
+
+.PARAMETER computerName
+The default is the current computer but you can specify a different computer 
+instead.
+
+.OUTPUTS
+A TimeSpan type.
+
+.LINK
+http://www.wintellect.com/cs/blogs/jrobbins/default.aspx
+https://github.com/Wintellect/WintellectPowerShell
+
+#>
+    param( [string] $computerName = ".")
+
+    $wmi = Get-WmiObject -class Win32_OperatingSystem -computer $computerName
+    $LBTime=$wmi.ConvertToDateTime($wmi.Lastbootuptime)
+    New-TimeSpan $LBTime $(get-date)
+}
+
 # SIG # Begin signature block
 # MIIO0QYJKoZIhvcNAQcCoIIOwjCCDr4CAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU6/HR0coug2+T0+EMnVsi/Pbe
-# E0SgggmnMIIEkzCCA3ugAwIBAgIQR4qO+1nh2D8M4ULSoocHvjANBgkqhkiG9w0B
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUq6Pjx0IL6uU3za8xE5Qjymhd
+# XiqgggmnMIIEkzCCA3ugAwIBAgIQR4qO+1nh2D8M4ULSoocHvjANBgkqhkiG9w0B
 # AQUFADCBlTELMAkGA1UEBhMCVVMxCzAJBgNVBAgTAlVUMRcwFQYDVQQHEw5TYWx0
 # IExha2UgQ2l0eTEeMBwGA1UEChMVVGhlIFVTRVJUUlVTVCBOZXR3b3JrMSEwHwYD
 # VQQLExhodHRwOi8vd3d3LnVzZXJ0cnVzdC5jb20xHTAbBgNVBAMTFFVUTi1VU0VS
@@ -72,24 +103,24 @@ Get-ChildItem -Path $script:CodeDirectory -Filter *.psm1 | `
 # Oi8vd3d3LnVzZXJ0cnVzdC5jb20xHTAbBgNVBAMTFFVUTi1VU0VSRmlyc3QtT2Jq
 # ZWN0AhA/+9ToTVeBHv2GK8w5hdxbMAkGBSsOAwIaBQCgeDAYBgorBgEEAYI3AgEM
 # MQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwGCisGAQQB
-# gjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQVmSj0UTKJt59p
-# VIW9OpDRf9F6ZTANBgkqhkiG9w0BAQEFAASCAQCbuP67bZwK9r0Jl1fQyeTPuYfM
-# R2E9VVsZox9fdy6DnI70jEbfMU/Xod3nsdBPojkxU1Qmo3+sS4Txyfw5YFwtB583
-# Sn63pz2TnvYb57wKf7xTWcu23jXX00RWuCH0++p3RqB7uaCsYZ9ZLV2iakbBFXjy
-# HrQlrO6yZo4yeesvWguRIj3CvEICMQ5caR3MEXAIh1YUQ4pKEQ1OzBWCQXA6hLI2
-# 6Obn5zcb2WySqcGEHV+rMxlCSI2yvF0qiFBJDH/TDWmjkYi/NdlwyJkNjjS2KSTY
-# oeEsrWusp2Hk7TgGYdEtway+V7KFXO6AAnq+h/V16OQmV0Vf1a0C5j6auElioYIC
+# gjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQemTtr7cMhSUM1
+# lhWuCBsZsuXu4DANBgkqhkiG9w0BAQEFAASCAQAcrlGZNpBknOGKK5AFJzD3AADu
+# rD9W37tUxhWV8+aekSqYg9+lAUI42JxMWF3BsqqiHDdGwZGC5RBaANl6JZCvBYhu
+# jO0IbdYv6COJKBCuRzZcfSEiQKtViPVhcmpYBISOOjwB3nfbqJxZK+754j2Gvl1L
+# ot466o224aIVK9SUVGJl6OjH6/OnMJkozBcCsV34HyJmo1Pf6rbHfYbWdaXeY7pz
+# I9r1sSxGzGr5ukmYSepQt8s+MD+U7VDzkHjyEUGvb5oKOw2VxQXItPQv7Q9KzmTb
+# QhJgfoKeCgBASJveyrdVnKYyJO9d70UdbW/TMitkuWOeBmADnk5Su6vTO7RSoYIC
 # RDCCAkAGCSqGSIb3DQEJBjGCAjEwggItAgEAMIGqMIGVMQswCQYDVQQGEwJVUzEL
 # MAkGA1UECBMCVVQxFzAVBgNVBAcTDlNhbHQgTGFrZSBDaXR5MR4wHAYDVQQKExVU
 # aGUgVVNFUlRSVVNUIE5ldHdvcmsxITAfBgNVBAsTGGh0dHA6Ly93d3cudXNlcnRy
 # dXN0LmNvbTEdMBsGA1UEAxMUVVROLVVTRVJGaXJzdC1PYmplY3QCEEeKjvtZ4dg/
 # DOFC0qKHB74wCQYFKw4DAhoFAKBdMBgGCSqGSIb3DQEJAzELBgkqhkiG9w0BBwEw
-# HAYJKoZIhvcNAQkFMQ8XDTEzMDEyNzA4MDEzNFowIwYJKoZIhvcNAQkEMRYEFCbq
-# KjNyae3rBi7ZRkxsolAbVddDMA0GCSqGSIb3DQEBAQUABIIBAKupvf5NFZvNnvTz
-# wHYrPpPcqPCqs9B4LNO534c2ouJ4Bbe6WdWUlBGlDuJ00SjU8GSq4JZaRy8WJYln
-# LsmprkTqKe+x2n5oinRWetiRY+QlBK4a7F93YBh6VNAN4ZcSYM/RE52l7ojJF99Y
-# UiNzu9IolOD9S69mwqjkx6xIo/T5NsQu3FZ9qN5wkZE5xcRqoLdjNoS7pCN/3sSd
-# 9WM1S2OPWN2CcnihRoaOpD/i9xtEMiFzFiCmtKDZSnMm6IwjLtRBfYEadKxzXbtT
-# 2DR1J2KOhlOxyelFkJRi4arV0gSZQO5gb5RE+Ve+p5+Zx0I+b24YsetmcOVCR/3k
-# hzPcQEs=
+# HAYJKoZIhvcNAQkFMQ8XDTEzMDEyNzA4MDEzMlowIwYJKoZIhvcNAQkEMRYEFNL9
+# XxqwZ7jELMWf7U4zQ4TsyyLXMA0GCSqGSIb3DQEBAQUABIIBACr3ABCWDUTA0h6C
+# WjDKM/erQ4XN/yeap+vjjdG1H9m38s6ZoGxFLQHvFOGjOWNP+9PSvOWIyoJmz1cR
+# 76EK5lumMH9j+GIZ5oRbZYGVZNb1qgOWB/dIH+Z3rHeEYpKtX/T6oTTC3IalbZhP
+# NKVxlS3g9uXPLv9EguVPiIJn8mHhOQp8N8/647tE4S876R/0oM0In+zOk1fUtIWs
+# O/3j5y4JR7Ql4CJ/Nl7JIqnqEroqfZoQGoGyXd+1cRqQaW8RbbJVtFFeXJLIwbkz
+# eHr4zwU13D4Y5fKKGtf9GS6Rb0tyMDOPPRLpqYe3fsq8oFA4EvAFzPeNNhKn/Q88
+# WVsi0Cc=
 # SIG # End signature block

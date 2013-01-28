@@ -51,17 +51,12 @@ Here's the about text showing all cmdlets. Of course, all cmdlets have detailed 
             Get-Hash                    Returns the crytographic hash values for files or strings.
 
             Compare-Directories         Compares two directories.
+
+            Merge-HashTables            Utility function to merge two hash tables together.
+
+            Set-ProjectProperties       Makes setting Visual Studio project options super easy
+
             
     SEE ALSO
         Online help and updates: http://www.wintellect.com/CS/blogs/jrobbins/default.aspx
-        Set-SymbolServer
-        Get-SymbolServer
-        Set-SourceServer
-        Get-SourceServer
-        Get-SourceServerFiles
-        Get-SysinternalsSuite
-        Get-Uptime
-        Expand-ZipFile
-        Test-PathReg
-        Get-Hash
-        Compare-Directories
+        GitHub repository      : https://github.com/Wintellect/WintellectPowerShell

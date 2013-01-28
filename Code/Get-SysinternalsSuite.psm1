@@ -6,16 +6,84 @@
 # Do whatever you want with this module, but please do give credit.
 ###############################################################################
 
-# Sub module directory
-$script:CodeDirectory = "$psScriptRoot\Code"
+# Always make sure all variables are defined and all best practices are 
+# followed.
+Set-StrictMode -version Latest
 
-Get-ChildItem -Path $script:CodeDirectory -Filter *.psm1 | `
-    ForEach-Object { Import-Module $_.FullName }
+###############################################################################
+# Public Cmdlets
+###############################################################################
+function Get-SysinternalsSuite
+{
+<#
+.SYNOPSIS
+Gets all the wonderful Sysinternals tools.
+
+.DESCRIPTION
+Downloads and extracts the Sysinternal tools to the directory you specify.
+
+.PARAMETER Extract
+The directory where you want to extract the Sysinternal tools.
+
+.PARAMETER Save
+The default is to download the SysinternalsSuite.zip file and remove it after 
+extracting the contents. If you want to keep the file, specify the save directory 
+with this parameter.
+
+.LINK
+http://www.wintellect.com/cs/blogs/jrobbins/default.aspx
+https://github.com/Wintellect/WintellectPowerShell
+
+#>
+    param ( 
+        [Parameter(Mandatory=$true,
+                   HelpMessage="Please specify the extract directory")]
+        [string] $Extract ,
+        [Parameter(HelpMessage="Please specify the directory to expand into")]
+        [string] $Save
+    ) 
+    
+	New-Item -ItemType Directory -Path $Extract -ErrorAction SilentlyContinue > $null
+
+    [Boolean]$deleteZipFile = $TRUE
+    [String]$downloadFile = ""
+    if ( $Save.Length -gt 0 )
+    { 
+        New-Item -ItemType Directory -Path $Save -ErrorAction SilentlyContinue > $null
+        $downloadFile = $Save
+        $deleteZipFile = $FALSE
+    }
+    else
+    { 
+        # Use the %TEMP% path for the user.
+        $downloadFile = $env:temp
+    }
+    
+    # Build up the full location and filename.
+    $downloadFile = $(Get-item $downloadFile).FullName
+    $downloadFile = Join-Path -path $downloadFile -childpath "SysinternalsSuite.zip" 
+
+    # Let the download begin!
+    Write-Output "Starting download of the Sysinternals Suite"
+    $webClient = New-Object System.Net.WebClient
+    $webClient.DownloadFile("http://download.sysinternals.com/files/SysinternalsSuite.zip" ,
+                            $downloadFile)
+    Write-Output "Sysinternals suite downloaded to $downloadFile"
+
+    Write-Output "Extracting files into $Extract"
+    Expand-ZipFile $downloadFile $Extract
+    
+    if ($deleteZipFile -eq $true)
+    {
+        Remove-Item $downloadFile    
+    }
+}
+
 # SIG # Begin signature block
 # MIIO0QYJKoZIhvcNAQcCoIIOwjCCDr4CAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU6/HR0coug2+T0+EMnVsi/Pbe
-# E0SgggmnMIIEkzCCA3ugAwIBAgIQR4qO+1nh2D8M4ULSoocHvjANBgkqhkiG9w0B
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUBjkewYd4UWQSJ59CM+GYbNsJ
+# tdugggmnMIIEkzCCA3ugAwIBAgIQR4qO+1nh2D8M4ULSoocHvjANBgkqhkiG9w0B
 # AQUFADCBlTELMAkGA1UEBhMCVVMxCzAJBgNVBAgTAlVUMRcwFQYDVQQHEw5TYWx0
 # IExha2UgQ2l0eTEeMBwGA1UEChMVVGhlIFVTRVJUUlVTVCBOZXR3b3JrMSEwHwYD
 # VQQLExhodHRwOi8vd3d3LnVzZXJ0cnVzdC5jb20xHTAbBgNVBAMTFFVUTi1VU0VS
@@ -72,24 +140,24 @@ Get-ChildItem -Path $script:CodeDirectory -Filter *.psm1 | `
 # Oi8vd3d3LnVzZXJ0cnVzdC5jb20xHTAbBgNVBAMTFFVUTi1VU0VSRmlyc3QtT2Jq
 # ZWN0AhA/+9ToTVeBHv2GK8w5hdxbMAkGBSsOAwIaBQCgeDAYBgorBgEEAYI3AgEM
 # MQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwGCisGAQQB
-# gjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQVmSj0UTKJt59p
-# VIW9OpDRf9F6ZTANBgkqhkiG9w0BAQEFAASCAQCbuP67bZwK9r0Jl1fQyeTPuYfM
-# R2E9VVsZox9fdy6DnI70jEbfMU/Xod3nsdBPojkxU1Qmo3+sS4Txyfw5YFwtB583
-# Sn63pz2TnvYb57wKf7xTWcu23jXX00RWuCH0++p3RqB7uaCsYZ9ZLV2iakbBFXjy
-# HrQlrO6yZo4yeesvWguRIj3CvEICMQ5caR3MEXAIh1YUQ4pKEQ1OzBWCQXA6hLI2
-# 6Obn5zcb2WySqcGEHV+rMxlCSI2yvF0qiFBJDH/TDWmjkYi/NdlwyJkNjjS2KSTY
-# oeEsrWusp2Hk7TgGYdEtway+V7KFXO6AAnq+h/V16OQmV0Vf1a0C5j6auElioYIC
+# gjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQnjmKGgf6Z4kim
+# A6f8HxnJzOMnLzANBgkqhkiG9w0BAQEFAASCAQAGOwm7qGpjWiDyBRKbtpKDi6Ti
+# d3uXLT97xfU2jKrlgntKTlv/sFrY8nIBbzTMpXHcvkkS4Hewtu8oQM4LFbe0sAGl
+# ThMYqkONMahqwpXSjTkFEYjUk9wDOt+0faRrX7NcWemiUk1cE9RqeVeU5R5lhwe8
+# fgOAz29ABHISI9wNYoGjaueaUzrP5NBIjWDAj2Tl/nx/I85XgxY6jZ937hYY0yxt
+# NFWXWzAKc3WDipB+EB8220zaBDD+etij7vhp6fKPG3K6MxPhsOQt6TYGHevRI5Wj
+# cO6ilXb85HBL5DD9+t3QWvCoWDzFykWLyl5wVgYzc/70WOuU/dDskj52WhtyoYIC
 # RDCCAkAGCSqGSIb3DQEJBjGCAjEwggItAgEAMIGqMIGVMQswCQYDVQQGEwJVUzEL
 # MAkGA1UECBMCVVQxFzAVBgNVBAcTDlNhbHQgTGFrZSBDaXR5MR4wHAYDVQQKExVU
 # aGUgVVNFUlRSVVNUIE5ldHdvcmsxITAfBgNVBAsTGGh0dHA6Ly93d3cudXNlcnRy
 # dXN0LmNvbTEdMBsGA1UEAxMUVVROLVVTRVJGaXJzdC1PYmplY3QCEEeKjvtZ4dg/
 # DOFC0qKHB74wCQYFKw4DAhoFAKBdMBgGCSqGSIb3DQEJAzELBgkqhkiG9w0BBwEw
-# HAYJKoZIhvcNAQkFMQ8XDTEzMDEyNzA4MDEzNFowIwYJKoZIhvcNAQkEMRYEFCbq
-# KjNyae3rBi7ZRkxsolAbVddDMA0GCSqGSIb3DQEBAQUABIIBAKupvf5NFZvNnvTz
-# wHYrPpPcqPCqs9B4LNO534c2ouJ4Bbe6WdWUlBGlDuJ00SjU8GSq4JZaRy8WJYln
-# LsmprkTqKe+x2n5oinRWetiRY+QlBK4a7F93YBh6VNAN4ZcSYM/RE52l7ojJF99Y
-# UiNzu9IolOD9S69mwqjkx6xIo/T5NsQu3FZ9qN5wkZE5xcRqoLdjNoS7pCN/3sSd
-# 9WM1S2OPWN2CcnihRoaOpD/i9xtEMiFzFiCmtKDZSnMm6IwjLtRBfYEadKxzXbtT
-# 2DR1J2KOhlOxyelFkJRi4arV0gSZQO5gb5RE+Ve+p5+Zx0I+b24YsetmcOVCR/3k
-# hzPcQEs=
+# HAYJKoZIhvcNAQkFMQ8XDTEzMDEyNzA4MDEzMlowIwYJKoZIhvcNAQkEMRYEFDUG
+# esLs8QPg+y5YuZiyYqHj6qXbMA0GCSqGSIb3DQEBAQUABIIBAD0IadKWoSQ4cc1N
+# 4DjalXGytF21NiLhXT9pTr/buymWRPd3g4tQsCUFTUEh53KQhNcPQdZ9hQglqJy/
+# 5XJzv9k7iyAOZuF6lbYjgHi7eX7x8zi47BcYKcu9rtGSlqkQMiKp4q15ulR30IrD
+# ZKHwW5/xlVwpzyxDZWcCTiUNgJKFva9kmt/8aAQS7myew1lKIWD6JrbM0+IsCJP2
+# 8DM8oni8mVB7tu5S2ktdMPkuY1X2Vs29h2NOqkq0nNhbWUIAo8lOzGOAIXdydzQa
+# DnHSXYZghxPhhL5pCG8dE4MHzNj6HOR/2d0xFh4SLHokOmb1G/zkl7Yi/KSY45Gv
+# RLgUZsM=
 # SIG # End signature block

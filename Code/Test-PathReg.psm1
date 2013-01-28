@@ -6,16 +6,69 @@
 # Do whatever you want with this module, but please do give credit.
 ###############################################################################
 
-# Sub module directory
-$script:CodeDirectory = "$psScriptRoot\Code"
+# Always make sure all variables are defined and all best practices are 
+# followed.
+Set-StrictMode -version Latest
 
-Get-ChildItem -Path $script:CodeDirectory -Filter *.psm1 | `
-    ForEach-Object { Import-Module $_.FullName }
+###############################################################################
+# Public Cmdlets
+###############################################################################
+function Test-PathReg
+{
+<#
+.SYNOPSIS
+Validates the existence of a registry key
+
+.DESCRIPTION
+This function searches for the registry value (Property attribute) under the 
+given registry key (Path attribute) and returns $true if it exists.
+Author: Can Dedeoglu (Thanks Can!)
+
+.PARAMETER Path
+Specifies the Registry path.
+
+.PARAMETER Property
+Specifies the name of the registry property that will be searched for under the
+given Registry path.
+
+.EXAMPLE
+C:\PS> Test-PathReg -Path HKLM:\SYSTEM\CurrentControlSet\services\Tcpip\Parameters -Property Hostname
+
+Checks to see if the Hostname property exists in the HKLM:\SYSTEM\CurrentControlSet\services\Tcpip\Parameters registry key
+
+.LINK
+http://blogs.msdn.com/candede
+
+#>
+    param (
+        [Parameter(mandatory=$true,position=0)]
+        [string]$Path,
+        [Parameter(mandatory=$true,position=1)]
+        [string]$Property )
+
+
+    $compare = (Get-ItemProperty -LiteralPath $Path).psbase.members | `
+                    %{$_.name} | `
+                    compare $Property -IncludeEqual -ExcludeDifferent
+    if($compare -eq $null)
+    {
+        return $false
+    }
+    if($compare.SideIndicator -like "==") 
+    {
+        return $true
+    }
+    else
+    {
+        return $false
+    }
+}
+
 # SIG # Begin signature block
 # MIIO0QYJKoZIhvcNAQcCoIIOwjCCDr4CAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU6/HR0coug2+T0+EMnVsi/Pbe
-# E0SgggmnMIIEkzCCA3ugAwIBAgIQR4qO+1nh2D8M4ULSoocHvjANBgkqhkiG9w0B
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUq2J3QZ8f2NLm1LRyHnYG/ILG
+# TxagggmnMIIEkzCCA3ugAwIBAgIQR4qO+1nh2D8M4ULSoocHvjANBgkqhkiG9w0B
 # AQUFADCBlTELMAkGA1UEBhMCVVMxCzAJBgNVBAgTAlVUMRcwFQYDVQQHEw5TYWx0
 # IExha2UgQ2l0eTEeMBwGA1UEChMVVGhlIFVTRVJUUlVTVCBOZXR3b3JrMSEwHwYD
 # VQQLExhodHRwOi8vd3d3LnVzZXJ0cnVzdC5jb20xHTAbBgNVBAMTFFVUTi1VU0VS
@@ -72,24 +125,24 @@ Get-ChildItem -Path $script:CodeDirectory -Filter *.psm1 | `
 # Oi8vd3d3LnVzZXJ0cnVzdC5jb20xHTAbBgNVBAMTFFVUTi1VU0VSRmlyc3QtT2Jq
 # ZWN0AhA/+9ToTVeBHv2GK8w5hdxbMAkGBSsOAwIaBQCgeDAYBgorBgEEAYI3AgEM
 # MQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwGCisGAQQB
-# gjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQVmSj0UTKJt59p
-# VIW9OpDRf9F6ZTANBgkqhkiG9w0BAQEFAASCAQCbuP67bZwK9r0Jl1fQyeTPuYfM
-# R2E9VVsZox9fdy6DnI70jEbfMU/Xod3nsdBPojkxU1Qmo3+sS4Txyfw5YFwtB583
-# Sn63pz2TnvYb57wKf7xTWcu23jXX00RWuCH0++p3RqB7uaCsYZ9ZLV2iakbBFXjy
-# HrQlrO6yZo4yeesvWguRIj3CvEICMQ5caR3MEXAIh1YUQ4pKEQ1OzBWCQXA6hLI2
-# 6Obn5zcb2WySqcGEHV+rMxlCSI2yvF0qiFBJDH/TDWmjkYi/NdlwyJkNjjS2KSTY
-# oeEsrWusp2Hk7TgGYdEtway+V7KFXO6AAnq+h/V16OQmV0Vf1a0C5j6auElioYIC
+# gjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQQOZPMbJWBy+q2
+# djsj0OpFpj6k6zANBgkqhkiG9w0BAQEFAASCAQAXwQWU8wZ0vjRFLt9JnObwaEsx
+# M0ze2ZMto5C0aPUlHIUhPeXUpq0LO1CPKTNCK/680+AeCvKs00y1b5l6jeEnEnos
+# bteHvtr8JvpNwocnLwAy++P9aqCw8ie8cct2WGOrYrw1vJ52lf+hZabwWf5pxrRk
+# skOFn9Y/5ppldS611/NthxBQ//leNDUwPiXVFwx3duB+CWW2bLIfS5qSObqOE/dq
+# jhcbPKzGUxOWVS0LqN1wTm5ClN2wUli7irlv4Cget3lXEFwkLY3k8E+hZ7Ow/pWP
+# uJ/Z1JrVTsHC3DWt0JKRETS+X5RASeiCAS+OAhgM07fQQ34iY2ZljKgJdUxYoYIC
 # RDCCAkAGCSqGSIb3DQEJBjGCAjEwggItAgEAMIGqMIGVMQswCQYDVQQGEwJVUzEL
 # MAkGA1UECBMCVVQxFzAVBgNVBAcTDlNhbHQgTGFrZSBDaXR5MR4wHAYDVQQKExVU
 # aGUgVVNFUlRSVVNUIE5ldHdvcmsxITAfBgNVBAsTGGh0dHA6Ly93d3cudXNlcnRy
 # dXN0LmNvbTEdMBsGA1UEAxMUVVROLVVTRVJGaXJzdC1PYmplY3QCEEeKjvtZ4dg/
 # DOFC0qKHB74wCQYFKw4DAhoFAKBdMBgGCSqGSIb3DQEJAzELBgkqhkiG9w0BBwEw
-# HAYJKoZIhvcNAQkFMQ8XDTEzMDEyNzA4MDEzNFowIwYJKoZIhvcNAQkEMRYEFCbq
-# KjNyae3rBi7ZRkxsolAbVddDMA0GCSqGSIb3DQEBAQUABIIBAKupvf5NFZvNnvTz
-# wHYrPpPcqPCqs9B4LNO534c2ouJ4Bbe6WdWUlBGlDuJ00SjU8GSq4JZaRy8WJYln
-# LsmprkTqKe+x2n5oinRWetiRY+QlBK4a7F93YBh6VNAN4ZcSYM/RE52l7ojJF99Y
-# UiNzu9IolOD9S69mwqjkx6xIo/T5NsQu3FZ9qN5wkZE5xcRqoLdjNoS7pCN/3sSd
-# 9WM1S2OPWN2CcnihRoaOpD/i9xtEMiFzFiCmtKDZSnMm6IwjLtRBfYEadKxzXbtT
-# 2DR1J2KOhlOxyelFkJRi4arV0gSZQO5gb5RE+Ve+p5+Zx0I+b24YsetmcOVCR/3k
-# hzPcQEs=
+# HAYJKoZIhvcNAQkFMQ8XDTEzMDEyNzA4MDEzM1owIwYJKoZIhvcNAQkEMRYEFAQ4
+# jlQvYRA2u9G6GDPeW5iLXzLyMA0GCSqGSIb3DQEBAQUABIIBAIsQLgZdj3ik3ZyQ
+# HmawJzyBocjNFw8fwSiYNydECy6XJd9sASmU26gnvoNnGS6kBsBRh7kswuQydeFQ
+# ePCZDWwkQwseUgQZ7LZl3pETjYzQd5diDw3Jd17hPa6OQTr631D473l/SezRl22x
+# Rg9J0+oxO+fG+7x7XVUZAgdzvzBQ8PU3CrunAxv+29HdrbDMoBvT08aJLbxwxlZG
+# lqcSdWfubrEUdC8URyrGES37kD8dvcumQeHQ912r1JFFnGL8jYtrjre8cyajzUb1
+# 17D7SBaH3TFHwa6RsdCD4x3I+13DjP4XX77ch9zUKjQYHdpxlSt3xgAeP9xRIA8b
+# Iz9/8UU=
 # SIG # End signature block

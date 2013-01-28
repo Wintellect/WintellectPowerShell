@@ -6,16 +6,74 @@
 # Do whatever you want with this module, but please do give credit.
 ###############################################################################
 
-# Sub module directory
-$script:CodeDirectory = "$psScriptRoot\Code"
+# Always make sure all variables are defined and all best practices are 
+# followed.
+Set-StrictMode -version Latest
 
-Get-ChildItem -Path $script:CodeDirectory -Filter *.psm1 | `
-    ForEach-Object { Import-Module $_.FullName }
+###############################################################################
+# Public Cmdlets
+###############################################################################
+function Expand-ZipFile
+{
+<#
+.SYNOPSIS
+Expands a .ZIP file to the specified directory.
+
+.DESCRIPTION
+Using no external ZIP utilities, expands a .ZIP file to a specified directory.
+
+.PARAMETER ZipFile
+The .ZIP file to expand.
+
+.PARAMETER Destination
+The output directory for the ZipFile. If this directory does not exist, it will
+be created.
+
+.LINK
+http://www.wintellect.com/cs/blogs/jrobbins/default.aspx
+https://github.com/Wintellect/WintellectPowerShell
+
+#>
+
+    param ( 
+        [Parameter(Mandatory=$true,
+                   HelpMessage="Please specify the zip file to expand")]
+        [string] $ZipFile ,
+        [Parameter(Mandatory=$true,
+                   HelpMessage="Please specify the directory to expand into")]
+        [string] $Destination
+    ) 
+    # Basic idea found here 
+    # http://ochoco.blogspot.com/2009/04/quick-bytes-unzipping-zip-file-using.html.
+    # Tweaked to be more usable.
+    
+    if (! (Test-Path $ZipFile))
+    {
+        throw "The zip file must exist."
+    }
+    
+    New-Item -ItemType Directory -Path $Destination -ErrorAction SilentlyContinue > $null
+    
+    # It's important you get the full path at the shell application fails if 
+    # you're using a relative path.
+    $Destination = Resolve-Path $Destination
+    
+    $shellApplication = new-object -com shell.application 
+    $zipPackage = $shellApplication.NameSpace($ZipFile) 
+    $destinationFolder = $shellApplication.NameSpace($Destination) 
+    # The first parameter to CopyHere are all the files, the second parameter
+    # of 20 says to turn off the default UI of the progress dialog and say 
+    # yes to all dialog boxes.
+    # All the codes can be found here:
+    # http://social.technet.microsoft.com/Forums/en-US/winserverpowershell/thread/b77840b8-459d-4509-8cc8-8fc7f6603e86
+    $destinationFolder.CopyHere($zipPackage.Items(),20) 
+}
+
 # SIG # Begin signature block
 # MIIO0QYJKoZIhvcNAQcCoIIOwjCCDr4CAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU6/HR0coug2+T0+EMnVsi/Pbe
-# E0SgggmnMIIEkzCCA3ugAwIBAgIQR4qO+1nh2D8M4ULSoocHvjANBgkqhkiG9w0B
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUDCDSaynh/bGreypIWZZ7XocY
+# NXWgggmnMIIEkzCCA3ugAwIBAgIQR4qO+1nh2D8M4ULSoocHvjANBgkqhkiG9w0B
 # AQUFADCBlTELMAkGA1UEBhMCVVMxCzAJBgNVBAgTAlVUMRcwFQYDVQQHEw5TYWx0
 # IExha2UgQ2l0eTEeMBwGA1UEChMVVGhlIFVTRVJUUlVTVCBOZXR3b3JrMSEwHwYD
 # VQQLExhodHRwOi8vd3d3LnVzZXJ0cnVzdC5jb20xHTAbBgNVBAMTFFVUTi1VU0VS
@@ -72,24 +130,24 @@ Get-ChildItem -Path $script:CodeDirectory -Filter *.psm1 | `
 # Oi8vd3d3LnVzZXJ0cnVzdC5jb20xHTAbBgNVBAMTFFVUTi1VU0VSRmlyc3QtT2Jq
 # ZWN0AhA/+9ToTVeBHv2GK8w5hdxbMAkGBSsOAwIaBQCgeDAYBgorBgEEAYI3AgEM
 # MQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwGCisGAQQB
-# gjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQVmSj0UTKJt59p
-# VIW9OpDRf9F6ZTANBgkqhkiG9w0BAQEFAASCAQCbuP67bZwK9r0Jl1fQyeTPuYfM
-# R2E9VVsZox9fdy6DnI70jEbfMU/Xod3nsdBPojkxU1Qmo3+sS4Txyfw5YFwtB583
-# Sn63pz2TnvYb57wKf7xTWcu23jXX00RWuCH0++p3RqB7uaCsYZ9ZLV2iakbBFXjy
-# HrQlrO6yZo4yeesvWguRIj3CvEICMQ5caR3MEXAIh1YUQ4pKEQ1OzBWCQXA6hLI2
-# 6Obn5zcb2WySqcGEHV+rMxlCSI2yvF0qiFBJDH/TDWmjkYi/NdlwyJkNjjS2KSTY
-# oeEsrWusp2Hk7TgGYdEtway+V7KFXO6AAnq+h/V16OQmV0Vf1a0C5j6auElioYIC
+# gjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBRB5IvDo6YwSzdn
+# YGnL1/Nw3MvORjANBgkqhkiG9w0BAQEFAASCAQCTNid8UU0Gs5CQBcrDse41ODlL
+# F+uorTIjMM0cq52DPe+HE3VXZMjNUagS6wGshacfYzUBEwffC474weTYWfhNO80/
+# PUlG4rb7MLC0oHdJStVKJERpPcDo+Il2MOIjsvCaqaJofRXNb8XzgvYXhUba/xJU
+# dXqqlmF3Ak1KTvnd8Kv/e15ilAy3oLq4I0ooTg8bEKBVU/GkEkcr7kdHC4+w9MQb
+# 2ZYh74YsI6tH4zrParXXboABdviZBygJ5igMdl5JNejxANcuJGQbjtlNRn9BEZwL
+# smUxnWRmqUWIZma/+umdEhz7ZDjOG7qaqcaXY+hm8XxBR5/0r+nYepoHfC7zoYIC
 # RDCCAkAGCSqGSIb3DQEJBjGCAjEwggItAgEAMIGqMIGVMQswCQYDVQQGEwJVUzEL
 # MAkGA1UECBMCVVQxFzAVBgNVBAcTDlNhbHQgTGFrZSBDaXR5MR4wHAYDVQQKExVU
 # aGUgVVNFUlRSVVNUIE5ldHdvcmsxITAfBgNVBAsTGGh0dHA6Ly93d3cudXNlcnRy
 # dXN0LmNvbTEdMBsGA1UEAxMUVVROLVVTRVJGaXJzdC1PYmplY3QCEEeKjvtZ4dg/
 # DOFC0qKHB74wCQYFKw4DAhoFAKBdMBgGCSqGSIb3DQEJAzELBgkqhkiG9w0BBwEw
-# HAYJKoZIhvcNAQkFMQ8XDTEzMDEyNzA4MDEzNFowIwYJKoZIhvcNAQkEMRYEFCbq
-# KjNyae3rBi7ZRkxsolAbVddDMA0GCSqGSIb3DQEBAQUABIIBAKupvf5NFZvNnvTz
-# wHYrPpPcqPCqs9B4LNO534c2ouJ4Bbe6WdWUlBGlDuJ00SjU8GSq4JZaRy8WJYln
-# LsmprkTqKe+x2n5oinRWetiRY+QlBK4a7F93YBh6VNAN4ZcSYM/RE52l7ojJF99Y
-# UiNzu9IolOD9S69mwqjkx6xIo/T5NsQu3FZ9qN5wkZE5xcRqoLdjNoS7pCN/3sSd
-# 9WM1S2OPWN2CcnihRoaOpD/i9xtEMiFzFiCmtKDZSnMm6IwjLtRBfYEadKxzXbtT
-# 2DR1J2KOhlOxyelFkJRi4arV0gSZQO5gb5RE+Ve+p5+Zx0I+b24YsetmcOVCR/3k
-# hzPcQEs=
+# HAYJKoZIhvcNAQkFMQ8XDTEzMDEyNzA4MDEzMVowIwYJKoZIhvcNAQkEMRYEFJqo
+# vG6sDmQGPxFXR4Jlq3RbD2t3MA0GCSqGSIb3DQEBAQUABIIBAHbxuipkLYOeTT7J
+# 7G1DpuYXXnrnp0vLFO59FZeoi0Iaq9GpOP6seK3/Ed1SrTDJ3sx9Mk3pl/Vn2HCf
+# o+8m4+K321J+7F7rFz0xZVi/FUEL5m0dz2WNH30GRvRSHFWVbOKthfWizQ92QQY5
+# 1MPWegKcR0q8C7sWcRxQ2hNBwADQCkGaDqUJ/kirfi+va3hIOVv2Xds8TnmWyBj0
+# bWo/8fGePQFdiqun+LkmqYqh4PzqE2MfHrlMxBB9R0WHbDlye5yna5AxHq+TIid4
+# vA9F3fOMTiHld78VD9av8l6oSBMQH5lEQfOqh7w/cngHV+ZFRKAgig8WgVIf0LMP
+# hEiCTsw=
 # SIG # End signature block

@@ -4,7 +4,18 @@
 # followed.
 Set-StrictMode -version Latest
 
-$files = ".\about_WintellectPowerShell.help.txt",".\WintellectPowerShell.psd1",".\WintellectPowerShell.psm1"
+$modPath = ($ENV:PSModulePath -split ';')[0]
+$fullPath = $modPath + "\WintellectPowerShell"
+
+# Does the module dir already exist? If so, kill it.
+if (Test-Path $fullPath)
+{
+    rmdir $fullPath\*.* -force -Recurse
+}
+
+$files = ".\about_WintellectPowerShell.help.txt",
+".\WintellectPowerShell.psd1",
+".\WintellectPowerShell.psm1"
 foreach ($file in $files)
 { 
     if ((Test-Path $file) -eq $false)
@@ -15,34 +26,16 @@ foreach ($file in $files)
     }
 }
 
-$helpFiles = ".\en-US\WintellectPowerShell.psm1-help.xml"
-foreach ($file in $helpFiles)
-{ 
-    if ((Test-Path $file) -eq $false)
-    { 
-        $err = "{0} is missing" -f $file
-        Write-Warning $err
-        return 
-    }
-}
+$codeFiles = dir ".\Code\*.psm1"
 
-$modPath = ($ENV:PSModulePath -split ';')[0]
-$fullPath = $modPath + "\WintellectPowerShell"
-
-if (! (Test-Path $fullPath) )
-{
-    New-Item -type directory -Path $fullPath > $null
-}
+New-Item -type directory -Path $fullPath -ErrorAction SilentlyContinue > $null
 
 Copy-Item $files -Destination $fullPath -Force 
 
-$fullPath += "\en-US\"
-if (! (Test-Path $fullPath) )
-{
-    New-Item -type directory -Path $fullPath > $null
-}
+$fullPath += "\Code\"
+New-Item -type directory -Path $fullPath -ErrorAction SilentlyContinue > $null
 
-Copy-Item $helpFiles -Destination $fullPath -Force 
+Copy-Item $codeFiles -Destination $fullPath -Force 
 
 ""
 "Execute 'import-module WintellectPowerShell' to use"
@@ -51,8 +44,8 @@ Copy-Item $helpFiles -Destination $fullPath -Force
 # SIG # Begin signature block
 # MIIO0QYJKoZIhvcNAQcCoIIOwjCCDr4CAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUc8pupNxBjyTfrfAFeB0IoRET
-# aXOgggmnMIIEkzCCA3ugAwIBAgIQR4qO+1nh2D8M4ULSoocHvjANBgkqhkiG9w0B
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU6Kf+OWRWHY3EOBdL1iq/P8bH
+# jxigggmnMIIEkzCCA3ugAwIBAgIQR4qO+1nh2D8M4ULSoocHvjANBgkqhkiG9w0B
 # AQUFADCBlTELMAkGA1UEBhMCVVMxCzAJBgNVBAgTAlVUMRcwFQYDVQQHEw5TYWx0
 # IExha2UgQ2l0eTEeMBwGA1UEChMVVGhlIFVTRVJUUlVTVCBOZXR3b3JrMSEwHwYD
 # VQQLExhodHRwOi8vd3d3LnVzZXJ0cnVzdC5jb20xHTAbBgNVBAMTFFVUTi1VU0VS
@@ -109,24 +102,24 @@ Copy-Item $helpFiles -Destination $fullPath -Force
 # Oi8vd3d3LnVzZXJ0cnVzdC5jb20xHTAbBgNVBAMTFFVUTi1VU0VSRmlyc3QtT2Jq
 # ZWN0AhA/+9ToTVeBHv2GK8w5hdxbMAkGBSsOAwIaBQCgeDAYBgorBgEEAYI3AgEM
 # MQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwGCisGAQQB
-# gjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBTG3g8TW6cTlzgk
-# xA+VrBwdiui8tjANBgkqhkiG9w0BAQEFAASCAQCWwdo+/zQYLpDsVciEN2zY2qkD
-# TZNzyQyZ+B4y+aDJyvzglw8/TNCJM9l89APThFTg9EhcGSAJA3D1KBC1G3Msxlui
-# hvRK2RXIudEm0ayk2EiXwKJLkeJslE0fTTMUlQCCD3HhCC38suXLNtosf8TEDaf9
-# 0w59TvcNQBCzby6kefAy61fmjyhX/DSU6zQkJJzJ2LIu2SU/8yIP2JcKcYuhu1bE
-# MspyUemJxk38lKDdQBt1myyD7KbKba8QoLlj0BknBWRNrmeaJXumEw14UEzen8EZ
-# JOkLvGBMSC9yRR4m6AXn5kmuh+t1zHsNdrw1KJLHvUarfaiDPk4MnVncAFo8oYIC
+# gjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBTEmrBJiUpKZlSw
+# c56LqxH7Ux6GKDANBgkqhkiG9w0BAQEFAASCAQB6613nr8miyx6XojE0bsFLCjyi
+# tyJzxHkafv5nshxD4fi+Yz1A98hMLqrNxwlH/WZXQInDagE8m8w4/oq/UCj6Xtzu
+# PVZxG3Ahti8fS8RXLToKfiUMx5ho1FDG+2/eQJO4AtZ1tz1UqRxIhbxvb1vxpZHx
+# CQqVyWhbJvvNxyMZtlc/Z0W2HtEriu1D+tMpTufbJ/i9PYXdGUeWOrBHfhGBVzHM
+# AKD+oWWhwpj0ydDWOuJY/UShUYXZ/Yfbzk5sgJBtzqekIU4tkkskzy691jBJPAuE
+# dN8LP6v6jMSAPYh8aSr2u60BRkRoO5CVm6MmYvWc+OkQ38F0PXxoS6itAkRGoYIC
 # RDCCAkAGCSqGSIb3DQEJBjGCAjEwggItAgEAMIGqMIGVMQswCQYDVQQGEwJVUzEL
 # MAkGA1UECBMCVVQxFzAVBgNVBAcTDlNhbHQgTGFrZSBDaXR5MR4wHAYDVQQKExVU
 # aGUgVVNFUlRSVVNUIE5ldHdvcmsxITAfBgNVBAsTGGh0dHA6Ly93d3cudXNlcnRy
 # dXN0LmNvbTEdMBsGA1UEAxMUVVROLVVTRVJGaXJzdC1PYmplY3QCEEeKjvtZ4dg/
 # DOFC0qKHB74wCQYFKw4DAhoFAKBdMBgGCSqGSIb3DQEJAzELBgkqhkiG9w0BBwEw
-# HAYJKoZIhvcNAQkFMQ8XDTEyMTAxNTAxMTczN1owIwYJKoZIhvcNAQkEMRYEFJUU
-# 4jXxLuWFKCDsZj2LXHXiKpbsMA0GCSqGSIb3DQEBAQUABIIBAF+nW71RhKG2Vz2W
-# tYB3a/Hi07nAlT1R6IRtSckH64CGnTwKiob9YpQxwXWrFAGrs219pDmwQkAzAmDS
-# GVdKWSkUI4CIu0JY/c4DU0MQfm5cP8wt6RbdNCHVS1dRRyCdOz3N0c3Ny3iu6ZL5
-# GkOTjGBP9uOooy+1o+DcQocIBhuyU4/r4mnRzJ/QST4sxMKiZCHES5so9eDLS4qC
-# /5SyO/2ePLsa5KFu28hN8BRFaPTDmUThGKHuaZFp95mM/okFzy4qNKpTcDxECTQl
-# P3vW1Ya3FNM+OfBShyAC0DouZtcLGHglRLKPzKXJpfbBw9GH9nbgdbnRMEYkT2fm
-# d0/EjR8=
+# HAYJKoZIhvcNAQkFMQ8XDTEzMDEyNzA4MDEzM1owIwYJKoZIhvcNAQkEMRYEFDt0
+# /DK7KKR/AYAlxHbwZaeQhZImMA0GCSqGSIb3DQEBAQUABIIBAIuEpUQLoQIN/pQ2
+# rYb7AEVzjzF16ma1zklTG/px1X4HmYbgDmtJhvKcewA4+Nct0B/gNMp/vJfq+SD/
+# vC4chGfS+4hUqxJJjBUGO54P7eUr3S7qXmXjaG7IZ6ueTbTFgiVwMcu9V7hnMJa9
+# 2xWEQgH/Xu4LkoH+AAk0JYTfLYxX2HII14i6Bul91r/QbCc/vHOnnp+qKkmBU0h9
+# /DdleXzqAdJli0lhtq2GqrtJx/6ctz3YFWn0qooAyTMTxC1iWmzr4WEfZk1fYVcS
+# rWF4hBHsNJAnDyF4oJzcvwO0EIsgxSzUJilGToTPoixWPkrD8KMiiRzA3v1zmcO8
+# VV/WcHk=
 # SIG # End signature block

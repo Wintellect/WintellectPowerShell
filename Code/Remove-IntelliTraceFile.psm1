@@ -6,16 +6,99 @@
 # Do whatever you want with this module, but please do give credit.
 ###############################################################################
 
-# Sub module directory
-$script:CodeDirectory = "$psScriptRoot\Code"
+# Always make sure all variables are defined and all best practices are 
+# followed.
+Set-StrictMode -version Latest
 
-Get-ChildItem -Path $script:CodeDirectory -Filter *.psm1 | `
-    ForEach-Object { Import-Module $_.FullName }
+###############################################################################
+# Public Cmdlets
+###############################################################################
+function Remove-IntelliTraceFiles
+{
+<#
+.SYNOPSIS
+Removes extra IntelliTrace files that may have been left over from your 
+debugging sessions.
+
+.DESCRIPTION
+Best practice with day to day debugging with IntelliTrace is to have the 
+debugger store the IntelliTrace files. This is important because you will gain 
+the ability to open the files after debugging. This option is not on by default, 
+but can be turned on by going to the VS Options dialog, IntelliTrace, Advanced 
+property page and checking "Store IntelliTrace recordings in this directory." 
+
+Once you have your IntelliTrace files being saved you have a small issue that 
+VS does not always properly clean up the files after shutting down. This 
+cmdlet checks to see if you are storing the files and if you are, deletes any 
+files found in the storage directory. Since IntelliTrace files can take up a 
+lot of disk space, it's good to clean out that directory every once in a while.
+
+By default, this script works with Visual Studio 2012, but if you need to 
+delete the IntelliTrace files for Visual Studio 2010, pass the -VS2010 switch.
+
+.PARAMETER VS2010
+Removes the stored IntelliTrace files for VS 2010. If not specified, does the 
+deletions for VS 2012.
+
+.LINK
+http://www.wintellect.com/cs/blogs/jrobbins/default.aspx
+https://github.com/Wintellect/WintellectPowerShell
+
+#>
+    [CmdLetBinding(SupportsShouldProcess=$true)]
+    param ( [switch] $VS2010 )
+
+    # First check if VS is running. If so, we can't continue as it may be using
+    # the .iTrace files.
+    $proc = Get-Process devenv -ErrorAction SilentlyContinue
+    if ($proc -ne $null)
+    {
+        throw "Visual Studio is running. Please close all instances."
+    }
+
+    # Default to VS 2012.
+    $vsVersion = "11.0"
+    if ($VS2010)
+    {
+        $vsVersion = "10.0"
+    }
+
+    $regKey = "HKCU:\Software\Microsoft\VisualStudio\" + 
+              $vsVersion + 
+              "\DialogPage\Microsoft.VisualStudio.TraceLogPackage.ToolsOptionAdvanced"
+
+    # Check to see if the user has set the options to save files. If not bail out.
+    if ( ((Test-PathReg $regKey "SaveRecordings") -eq $false) -or ((Get-ItemProperty $regKey).SaveRecordings -eq "False"))
+    {
+        throw "You have not configured IntelliTrace to save recordings. " +
+              "In the Options dialog, IntelliTtrace Advanced page, check the " +
+              "Store IntelliTrace recordings in this directory check box."
+    }
+    
+    $storageDir = ""
+    if ((Test-PathReg $regKey "RecordingPath") -ne $false)
+    {
+        # Get the storage directory for those files.
+        $storageDir = (Get-ItemProperty $regKey).RecordingPath
+    }
+
+    if ($storageDir.Length -eq 0)
+    {
+        throw "The IntelliTrace recording directory is empty. Check the " +
+              "Options dialog, IntelliTrace Advanced page to set the "+
+              "directory."
+    }
+
+    # Clean up those files but only do the ones in the main directory so if the
+    # user may have created paths and put other files there we don't delete those.
+    Get-ChildItem -Path $storageDir -Filter "*.iTrace" | Remove-Item -Force
+}
+
 # SIG # Begin signature block
 # MIIO0QYJKoZIhvcNAQcCoIIOwjCCDr4CAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU6/HR0coug2+T0+EMnVsi/Pbe
-# E0SgggmnMIIEkzCCA3ugAwIBAgIQR4qO+1nh2D8M4ULSoocHvjANBgkqhkiG9w0B
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUiISbgW8IUNeJiH4Oly0WJTYG
+# kAmgggmnMIIEkzCCA3ugAwIBAgIQR4qO+1nh2D8M4ULSoocHvjANBgkqhkiG9w0B
 # AQUFADCBlTELMAkGA1UEBhMCVVMxCzAJBgNVBAgTAlVUMRcwFQYDVQQHEw5TYWx0
 # IExha2UgQ2l0eTEeMBwGA1UEChMVVGhlIFVTRVJUUlVTVCBOZXR3b3JrMSEwHwYD
 # VQQLExhodHRwOi8vd3d3LnVzZXJ0cnVzdC5jb20xHTAbBgNVBAMTFFVUTi1VU0VS
@@ -72,24 +155,24 @@ Get-ChildItem -Path $script:CodeDirectory -Filter *.psm1 | `
 # Oi8vd3d3LnVzZXJ0cnVzdC5jb20xHTAbBgNVBAMTFFVUTi1VU0VSRmlyc3QtT2Jq
 # ZWN0AhA/+9ToTVeBHv2GK8w5hdxbMAkGBSsOAwIaBQCgeDAYBgorBgEEAYI3AgEM
 # MQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwGCisGAQQB
-# gjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQVmSj0UTKJt59p
-# VIW9OpDRf9F6ZTANBgkqhkiG9w0BAQEFAASCAQCbuP67bZwK9r0Jl1fQyeTPuYfM
-# R2E9VVsZox9fdy6DnI70jEbfMU/Xod3nsdBPojkxU1Qmo3+sS4Txyfw5YFwtB583
-# Sn63pz2TnvYb57wKf7xTWcu23jXX00RWuCH0++p3RqB7uaCsYZ9ZLV2iakbBFXjy
-# HrQlrO6yZo4yeesvWguRIj3CvEICMQ5caR3MEXAIh1YUQ4pKEQ1OzBWCQXA6hLI2
-# 6Obn5zcb2WySqcGEHV+rMxlCSI2yvF0qiFBJDH/TDWmjkYi/NdlwyJkNjjS2KSTY
-# oeEsrWusp2Hk7TgGYdEtway+V7KFXO6AAnq+h/V16OQmV0Vf1a0C5j6auElioYIC
+# gjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQPcP3nCKfuKUWj
+# dnYnpEo0+zzzSDANBgkqhkiG9w0BAQEFAASCAQBjN2GLP4dJSblT4a8IpzG9+l+M
+# mjf4VMH9alc7L73ERFjsR7Oun3hDLXf70ra+lM5xAMyMeJk6kxOyjv5reLR3oK8E
+# LDX+zVvkthGJd8oDTLHn32XROSmGIFshWhekiWItZKcpzHFolg2AwSdU4NF/T6Pu
+# F1eHnb+SYYoi/jwT7dP2Yk6RdMw2JlDst3U1r7C2+XFQo/yd/NTrqjT+ZrfU+Nmw
+# GVVYieCXcliLPCDLB3j4qzFVPmFd4dBzE74WAcRfZ97aUFEGX7IUzHB6tclNkwqi
+# Ol+KCM9uzduhBy9wESM5M2zfdrv2OSba0h2JeGk5UtkS9lXbG7RaUMv6i+BgoYIC
 # RDCCAkAGCSqGSIb3DQEJBjGCAjEwggItAgEAMIGqMIGVMQswCQYDVQQGEwJVUzEL
 # MAkGA1UECBMCVVQxFzAVBgNVBAcTDlNhbHQgTGFrZSBDaXR5MR4wHAYDVQQKExVU
 # aGUgVVNFUlRSVVNUIE5ldHdvcmsxITAfBgNVBAsTGGh0dHA6Ly93d3cudXNlcnRy
 # dXN0LmNvbTEdMBsGA1UEAxMUVVROLVVTRVJGaXJzdC1PYmplY3QCEEeKjvtZ4dg/
 # DOFC0qKHB74wCQYFKw4DAhoFAKBdMBgGCSqGSIb3DQEJAzELBgkqhkiG9w0BBwEw
-# HAYJKoZIhvcNAQkFMQ8XDTEzMDEyNzA4MDEzNFowIwYJKoZIhvcNAQkEMRYEFCbq
-# KjNyae3rBi7ZRkxsolAbVddDMA0GCSqGSIb3DQEBAQUABIIBAKupvf5NFZvNnvTz
-# wHYrPpPcqPCqs9B4LNO534c2ouJ4Bbe6WdWUlBGlDuJ00SjU8GSq4JZaRy8WJYln
-# LsmprkTqKe+x2n5oinRWetiRY+QlBK4a7F93YBh6VNAN4ZcSYM/RE52l7ojJF99Y
-# UiNzu9IolOD9S69mwqjkx6xIo/T5NsQu3FZ9qN5wkZE5xcRqoLdjNoS7pCN/3sSd
-# 9WM1S2OPWN2CcnihRoaOpD/i9xtEMiFzFiCmtKDZSnMm6IwjLtRBfYEadKxzXbtT
-# 2DR1J2KOhlOxyelFkJRi4arV0gSZQO5gb5RE+Ve+p5+Zx0I+b24YsetmcOVCR/3k
-# hzPcQEs=
+# HAYJKoZIhvcNAQkFMQ8XDTEzMDEyNzA4MDEzMlowIwYJKoZIhvcNAQkEMRYEFPEu
+# VoxkMBziqPaXiROUSsn45uc9MA0GCSqGSIb3DQEBAQUABIIBAHCl8GvQE26CAQhO
+# VXOUTjPOksl/vpbTGDsSqjdFm6UgGsQdlZbeo+Kvs+FB3lGdg0aVZvB1GqQmp3AQ
+# Em+x5MG0WJmBRZXt2Oz5YwfXmDcFsjDZY5pPFRpG+mG7tnPXgQnQq7Sjz8+twjAb
+# BEjOx3RSezW+oP3Bd2v5SPFllE449v6xZC5iCIMC3uhj1KVwhxfpj7X/rOJxA7/q
+# jm+rvp7eO5To2ZHMopAjN2DRaRHOR0ezOIMt0AklULEw44mQvhTwxlIplDlHMQsz
+# d1NuF3CJRLn2jNPuxhvT1OqTG+p+TfZ1cUT+ndl8gXAwrZxH+Xzi4a10aLSNEdbo
+# LEK1Tjo=
 # SIG # End signature block
