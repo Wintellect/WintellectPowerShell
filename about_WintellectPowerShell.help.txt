@@ -48,7 +48,9 @@ LONG DESCRIPTION
 
         Merge-HashTables            Utility function to merge two hash tables together.
 
-        Set-ProjectProperties       Makes setting Visual Studio project options super easy
+        Set-ProjectProperties       Makes setting Visual Studio project options super easy.
+
+        Add-NgenPdbs                Easily create PDB files from NGEN'd images on a machine.
 
         
 SEE ALSO

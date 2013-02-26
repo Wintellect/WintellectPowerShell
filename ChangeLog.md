@@ -1,5 +1,8 @@
 # Wintellect PowerShell Change Log #
 
+## February 25, 2013
+Added the Add-NgenPdb cmdlet.
+
 ## January, 27, 2013
 Added the very cool Set-ProjectProperties cmdlet to make batch updating of Visual Studio projects much easier. Right now it only supports C# projects.
 
