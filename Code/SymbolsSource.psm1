@@ -150,7 +150,7 @@ The keys are, if all present, VS 2010, VS 2012, and WinDBG. The values
 are those set for each debugger.
 
 .LINK
-http://www.wintellect.com/cs/blogs/jrobbins/default.aspx
+http://www.wintellect.com/blogs/jrobbins
 https://github.com/Wintellect/WintellectPowerShell
 
 #>
@@ -177,7 +177,7 @@ need to log off to ensure it's properly set.
 The directory to use. If the directory does not exist, it will be created.
 
 .LINK
-http://www.wintellect.com/cs/blogs/jrobbins/default.aspx
+http://www.wintellect.com/blogs/jrobbins
 https://github.com/Wintellect/WintellectPowerShell
 #>
     param ( 
@@ -222,7 +222,7 @@ Returns a hashtable with the current source server directories settings
 for VS 2010, VS 2012, and the _NT_SYMBOL_PATH enviroment variable.
 
 .LINK
-http://www.wintellect.com/cs/blogs/jrobbins/default.aspx
+http://www.wintellect.com/blogs/jrobbins
 https://github.com/Wintellect/WintellectPowerShell
 #>
     GetCommonSettings SymbolCacheDir _NT_SYMBOL_PATH
@@ -257,7 +257,7 @@ The keys are, if all present, VS 2010, VS 2012, and WinDBG. The values
 are those set for each debugger.
 
 .LINK
-http://www.wintellect.com/cs/blogs/jrobbins/default.aspx
+http://www.wintellect.com/blogs/jrobbins
 https://github.com/Wintellect/WintellectPowerShell
 #>
     param ( 
@@ -335,7 +335,7 @@ these symbol servers will appear after the public symbol servers so both the
 environment variable and Visual Studio have the same search order.
 
 .LINK
-http://www.wintellect.com/cs/blogs/jrobbins/default.aspx
+http://www.wintellect.com/blogs/jrobbins
 https://github.com/Wintellect/WintellectPowerShell
 #>
     [CmdLetBinding(SupportsShouldProcess=$true)]

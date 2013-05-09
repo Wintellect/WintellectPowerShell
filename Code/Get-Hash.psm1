@@ -81,7 +81,7 @@ Shows piping in a string to Get-Hash to calculate it's SHA256 hash.
 A3499FF85214D8A1B2FB28A71B6D8885BB1D296D4DB6624B51580D12EBB7CEC0
 
 .LINK
-http://www.wintellect.com/cs/blogs/jrobbins/default.aspx
+http://www.wintellect.com/blogs/jrobbins
 https://github.com/Wintellect/WintellectPowerShell
 
 #>

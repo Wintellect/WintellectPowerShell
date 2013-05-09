@@ -41,7 +41,7 @@ Removes the stored IntelliTrace files for VS 2010. If not specified, does the
 deletions for VS 2012.
 
 .LINK
-http://www.wintellect.com/cs/blogs/jrobbins/default.aspx
+http://www.wintellect.com/blogs/jrobbins
 https://github.com/Wintellect/WintellectPowerShell
 
 #>

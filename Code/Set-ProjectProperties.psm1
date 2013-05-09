@@ -192,7 +192,7 @@ properties in Visual Studio project files and the properties in them.
 See http://msdn.microsoft.com/en-us/library/0k6kkbsd.aspx for more information.
 
 .LINK
-http://www.wintellect.com/cs/blogs/jrobbins/default.aspx
+http://www.wintellect.com/blogs/jrobbins
 http://code.wintellect.com
 #>
     begin

@@ -30,7 +30,7 @@ The output directory for the ZipFile. If this directory does not exist, it will
 be created.
 
 .LINK
-http://www.wintellect.com/cs/blogs/jrobbins/default.aspx
+http://www.wintellect.com/blogs/jrobbins
 https://github.com/Wintellect/WintellectPowerShell
 
 #>

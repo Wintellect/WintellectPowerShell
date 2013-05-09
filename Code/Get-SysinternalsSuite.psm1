@@ -31,7 +31,7 @@ extracting the contents. If you want to keep the file, specify the save director
 with this parameter.
 
 .LINK
-http://www.wintellect.com/cs/blogs/jrobbins/default.aspx
+http://www.wintellect.com/blogs/jrobbins
 https://github.com/Wintellect/WintellectPowerShell
 
 #>

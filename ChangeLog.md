@@ -1,5 +1,16 @@
 # Wintellect PowerShell Change Log #
 
+## May 9, 2013
+Added the Set-Environment, Invoke-CmdScript, and Import-VisuaStudioEnvironment cmdlets.
+
+The Invoke-CmdScript cmdlet is based off [Lee Holmes'](http://www.leeholmes.com/blog/2006/05/11/nothing-solves-everything-%e2%80%93-powershell-and-other-technologies/) version.
+
+The Set-Environment cmdlet is from [Wes Haggard](http://weblogs.asp.net/whaggard/archive/2007/02/08/powershell-version-of-cmd-set.aspx). To replace the default set alias with the one provided by WintellectPowerShell, execute the following command before importing the module:
+
+`Import-Module WintellectPowerShell
+Remove-Item alias:set -Force -ErrorAction SilentlyContinue
+`
+
 ## February 25, 2013
 Added the Add-NgenPdb cmdlet.
 
