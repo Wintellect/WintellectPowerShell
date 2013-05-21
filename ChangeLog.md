@@ -1,5 +1,10 @@
 # Wintellect PowerShell Change Log #
 
+## May 20, 2013
+Updated the Set-SymbolServer -public switch to use the same cache on both the reference source and msdl download items. With VS 2012 this works better and helps avoid multiple downloads of various PDB files. Since I no longer use VS 2010, I'm not sure what affect this will have on that version. Also, I turn off using the Microsoft symbol servers as I'm putting them all in the _NT_SYMBOL_PATH environment variable anyway.
+
+Additionally, Set-SymbolServer now puts any specified symbol servers with the -SymbolServers switch at the front of the _NT_SYMBOL_PATH environment variable. This will make symbol downloading faster for those with your own symbol server set up.
+
 ## May 9, 2013
 Added the Set-Environment, Invoke-CmdScript, and Import-VisuaStudioEnvironment cmdlets.
 

@@ -116,8 +116,8 @@ function SetPublicSymbolServer([string] $DbgRegKey ,
     # With this flag on, .NET Reference Source Stepping doesn't work.
     Set-ItemPropertyScript $dbgRegKey UseDocumentChecksum 0 DWORD
     
-    # Turn on using the Microsoft symbol servers. 
-    Set-ItemPropertyScript $dbgRegKey SymbolUseMSSymbolServers 1 DWORD
+    # Turn off using the Microsoft symbol servers. 
+    Set-ItemPropertyScript $dbgRegKey SymbolUseMSSymbolServers 0 DWORD
     
     # Set the VS SymbolPath setting.
     Set-ItemPropertyScript $dbgRegKey SymbolPath ""
@@ -325,13 +325,12 @@ All the appropriate settings are configured to properly have .NET Reference
 Source stepping working.
 
 .PARAMETER CacheDirectory
-Defaults to C:\SYMBOLS\PUBLIC\MicrosoftPublicSymbols for -Public and 
-C:\SYMBOLS\INTERNAL for -Internal.
+Defaults to C:\SYMBOLS\PUBLIC for -Public and C:\SYMBOLS\INTERNAL for -Internal.
 
 .PARAMETER SymbolServers
 A string array of additional symbol servers to use. If -Internal is set, these 
-additional symbol servers will appear after HTTP://SYMWEB. If -Public is set, 
-these symbol servers will appear after the public symbol servers so both the 
+additional symbol servers will appear before HTTP://SYMWEB. If -Public is set, 
+these symbol servers will appear before the public symbol servers so both the 
 environment variable and Visual Studio have the same search order.
 
 .LINK
@@ -363,16 +362,17 @@ https://github.com/Wintellect/WintellectPowerShell
         	$CacheDirectory = "C:\SYMBOLS\INTERNAL" 
     	}
         
-        $symPath = "SRV*$CacheDirectory*http://SYMWEB"
+        $symPath = ""
 
         for ( $i = 0 ; $i -lt $SymbolServers.Length ; $i++ )
         {
-            $symPath += "*"
+            $symPath += "SRV*$CacheDirectory*"
             $symPath += $SymbolServers[$i]
-
+            $symPath += ";"
     	}
-        $symPath += ";"
         
+        $symPath += "SRV*$CacheDirectory*http://SYMWEB"
+
         Set-ItemPropertyScript HKCU:\Environment _NT_SYMBOL_PATH $symPath
 
         if (Test-Path $devTenDebuggerRegKey)
@@ -395,25 +395,22 @@ https://github.com/Wintellect/WintellectPowerShell
         	$CacheDirectory = "C:\SYMBOLS\PUBLIC" 
     	}
 
-        # It's public so we have a little different processing to do. I have to 
-        # add the MicrosoftPublicSymbols as VS hardcodes that onto the path.
-        # This way both WinDBG and VS are using the same paths for public
-        # symbols.
-        $refSrcPath = "$CacheDirectory\PublicSymbols*http://referencesource.microsoft.com/symbols"
+        # It's public so we have a little different processing to do as there are
+        # two public symbol servers where MSFT provides symbols.
+        $refSrcPath = "$CacheDirectory*http://referencesource.microsoft.com/symbols"
         $msdlPath = "$CacheDirectory*http://msdl.microsoft.com/download/symbols"
         $extraPaths = ""
-        $enabledPDBLocations ="11"
         
         # Poke on any additional symbol servers. I've keeping everything the
         # same between VS as WinDBG.
     	for ( $i = 0 ; $i -lt $SymbolServers.Length ; $i++ )
     	{
-            $extraPaths += ";"
+            $extraPaths += "SRV*$CacheDirectory*"
             $extraPaths += $SymbolServers[$i]
-            $enabledPDBLocations += "1"
+            $extraPaths += ";"
     	}
-        
-        $envPath = "SRV*$refSrcPath;SRV*$msdlPath$extraPaths"
+
+        $envPath = "$extraPaths" + "SRV*$refSrcPath;SRV*$msdlPath"
     
         Set-ItemPropertyScript HKCU:\Environment _NT_SYMBOL_PATH $envPath
     
@@ -438,8 +435,8 @@ Export-ModuleMember Set-SymbolServer
 # SIG # Begin signature block
 # MIIO0QYJKoZIhvcNAQcCoIIOwjCCDr4CAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUgOmOmXverWD+hFcyNzvpxq3n
-# SpKgggmnMIIEkzCCA3ugAwIBAgIQR4qO+1nh2D8M4ULSoocHvjANBgkqhkiG9w0B
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUZqtz+Y3L+Exlo+vVMHHq2NiI
+# mTqgggmnMIIEkzCCA3ugAwIBAgIQR4qO+1nh2D8M4ULSoocHvjANBgkqhkiG9w0B
 # AQUFADCBlTELMAkGA1UEBhMCVVMxCzAJBgNVBAgTAlVUMRcwFQYDVQQHEw5TYWx0
 # IExha2UgQ2l0eTEeMBwGA1UEChMVVGhlIFVTRVJUUlVTVCBOZXR3b3JrMSEwHwYD
 # VQQLExhodHRwOi8vd3d3LnVzZXJ0cnVzdC5jb20xHTAbBgNVBAMTFFVUTi1VU0VS
@@ -496,24 +493,24 @@ Export-ModuleMember Set-SymbolServer
 # Oi8vd3d3LnVzZXJ0cnVzdC5jb20xHTAbBgNVBAMTFFVUTi1VU0VSRmlyc3QtT2Jq
 # ZWN0AhA/+9ToTVeBHv2GK8w5hdxbMAkGBSsOAwIaBQCgeDAYBgorBgEEAYI3AgEM
 # MQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwGCisGAQQB
-# gjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQQmTLDe58Dnpmt
-# XkTvUIUZpIp/2jANBgkqhkiG9w0BAQEFAASCAQBgM2MvZXF+3SttL7ZwGBmi+/aj
-# DFtTOCTxqHdKL5JhxqTPI5zRVtYaWPRLU/UlomsAFfsZzFz4oT+FQjuWxCyzz2fH
-# JL6UkdIQuo98zP128aZitzFW8K5/XmwID32fumFygCk1otPhPpjFYpr6fXFdP7vT
-# TyK5h6FK0Xjity/4lIom9bS4DO4bU0VrFLR3TjPpX+lTsygj2JHPgMDldMHL/q5S
-# 9KObqy0voo3U6JuXzZIsWQ6m5PI2w+M6u4UfjuHq1C9VbBz3szhIgqMQoeHWGJDD
-# K+aIbUCvj3F0HB072usXivjsU+ntTTT5xnQeMN6JA0PiYiQFeM8ZhRJvcXhioYIC
+# gjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQZvfmmCSflLgX5
+# LQy0+hDa6XYruTANBgkqhkiG9w0BAQEFAASCAQBt1UhFMFOTuOOqBn/ck0QWWXO1
+# Re6CwvmGyR/n9o4jR8Hj6Xe/NoiWt8UTL1IRAhSpfWOnr0QNgiKkJIYPanzVfBwN
+# xB7vtXDkbSJJVM4yDyeSgcPbreWLXrdbtESVSoXcrwjnTxG7fVgsnRjDnuGYIOvx
+# wTQzR9BDMw1G5UmJBonWESCBsER36crRQkayk9Q1o2KdD9ajwqJyRotDEpZl1ADU
+# HOvXtgENdJ6d8elG+/k47UQF0hJGeqSY+AsmljIBiEPHpPuN2vPlGXkGrSgCfh9Z
+# ML+5/NgN2zS3elexH3MgJzNpHn2xjVlNwvKEIa6cfaAmQZMGtBfdOjKeymNLoYIC
 # RDCCAkAGCSqGSIb3DQEJBjGCAjEwggItAgEAMIGqMIGVMQswCQYDVQQGEwJVUzEL
 # MAkGA1UECBMCVVQxFzAVBgNVBAcTDlNhbHQgTGFrZSBDaXR5MR4wHAYDVQQKExVU
 # aGUgVVNFUlRSVVNUIE5ldHdvcmsxITAfBgNVBAsTGGh0dHA6Ly93d3cudXNlcnRy
 # dXN0LmNvbTEdMBsGA1UEAxMUVVROLVVTRVJGaXJzdC1PYmplY3QCEEeKjvtZ4dg/
 # DOFC0qKHB74wCQYFKw4DAhoFAKBdMBgGCSqGSIb3DQEJAzELBgkqhkiG9w0BBwEw
-# HAYJKoZIhvcNAQkFMQ8XDTEzMDUwOTE4NTc0N1owIwYJKoZIhvcNAQkEMRYEFLJC
-# YwSxgWuqTcgK4ugyldZsjoc4MA0GCSqGSIb3DQEBAQUABIIBALcKpKKKYvS1a9IG
-# chhflPYPp74tA1xme+S5FVMZznkyqCKmFPNI9g6n/dkcWVSKGiEN1fC/uc354JXy
-# ahJ4ppF2G2uZcCKsbRu6CmBClgTb0MSgWeliznxE2MKA4y+7KGmOFwfnyQlv+YdK
-# 77TagweWj/kHNwF1kP61naxXqTIbeU91Zq13zRQ66vQNib3fFwDH92Hihm2T+fRx
-# 3hy3I7UNHEglNrWtIwN8zJUG1KDSyxBNInmWxaB9pyqIv8svk2VBRkA/zG+25s5x
-# WTPmSBvt5VCqBThyLI0df0GVnFzowarB8cV5TN7YGjbZ6yF8BRTsNoSOccSAPDYC
-# USqL0MM=
+# HAYJKoZIhvcNAQkFMQ8XDTEzMDUyMTA2MjgwMFowIwYJKoZIhvcNAQkEMRYEFMeB
+# MhTIYTzquOqTycq791wJFheeMA0GCSqGSIb3DQEBAQUABIIBALTGGb5HGbvpx8Dh
+# JTHaehnY5oONheXAP39X3LdaIGYXp5Ekr1JFRiPBxxh1RhHp6q+fJtyZ1mHO50wE
+# RvTj1MzPHNPCeuuoSTeWC43BY4HAPnrygxzoPQ3P9acmzi+Ii92CAqYKegSIZ+ZI
+# h7o9m9MnXZHZqsW44r2jW5UhkbF9Cu2fmXZp/NG8YRqYXok17KzbN/QRIHgKV0uu
+# SroE9Vr0ILarIR6IMycmbMeshjGEbaAcZll8DWDdJLqBq74GZiyTskQcGTs3SMrF
+# Wpu0r1wlEmZ4IAzv5eyxQliLMx3LkI2VcwhewWfWHXpUM+Aj3HhvsNcsKxFczI8K
+# 4SYuTjo=
 # SIG # End signature block
