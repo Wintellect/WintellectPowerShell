@@ -386,13 +386,13 @@ http://code.wintellect.com
                 $mainPropertiesHash = $script:DefaultDotNetGeneralProperties.Clone()
                 if ($CustomGeneralProperties.Count -gt 0)
                 {
-                    $mainPropertiesHash = MergeHashTables -htold $mainPropertiesHash -htnew $CustomGeneralProperties
+                    $mainPropertiesHash = Merge-HashTables -htold $mainPropertiesHash -htnew $CustomGeneralProperties
                 }
 
                 $configPropertiesHash = $script:DefaultDotNetConfigProperties.Clone()
                 if ($CustomConfigurationProperties.Count -gt 0)
                 {
-                    $configPropertiesHash = MergeHashTables -htold $configPropertiesHash -htnew $CustomConfigurationProperties
+                    $configPropertiesHash = Merge-HashTables -htold $configPropertiesHash -htnew $CustomConfigurationProperties
                 }
             }
 
@@ -469,8 +469,8 @@ http://code.wintellect.com
 # SIG # Begin signature block
 # MIIO0QYJKoZIhvcNAQcCoIIOwjCCDr4CAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUB3Ztcf9hg53qzrBPeJlot8TV
-# hcagggmnMIIEkzCCA3ugAwIBAgIQR4qO+1nh2D8M4ULSoocHvjANBgkqhkiG9w0B
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUhrLp+7TJALW32T3vZtrgRGU2
+# zhygggmnMIIEkzCCA3ugAwIBAgIQR4qO+1nh2D8M4ULSoocHvjANBgkqhkiG9w0B
 # AQUFADCBlTELMAkGA1UEBhMCVVMxCzAJBgNVBAgTAlVUMRcwFQYDVQQHEw5TYWx0
 # IExha2UgQ2l0eTEeMBwGA1UEChMVVGhlIFVTRVJUUlVTVCBOZXR3b3JrMSEwHwYD
 # VQQLExhodHRwOi8vd3d3LnVzZXJ0cnVzdC5jb20xHTAbBgNVBAMTFFVUTi1VU0VS
@@ -527,24 +527,24 @@ http://code.wintellect.com
 # Oi8vd3d3LnVzZXJ0cnVzdC5jb20xHTAbBgNVBAMTFFVUTi1VU0VSRmlyc3QtT2Jq
 # ZWN0AhA/+9ToTVeBHv2GK8w5hdxbMAkGBSsOAwIaBQCgeDAYBgorBgEEAYI3AgEM
 # MQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwGCisGAQQB
-# gjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQELRSGSuStQsj9
-# Y17+bPh8INU8jDANBgkqhkiG9w0BAQEFAASCAQCb/FcaDuNxxUSr5vZkTdKabW7f
-# +unhWiNIF1ko6IfgzGxwJj0lolMxYDlVPiq2DXVg92CTLpI0B8HImwGYzwV0Pjrt
-# ObUWazLE9g4+CZGN+EfflcOJwO6JL07m5wnc1DNp1LM2QtEx3Kyiym7fpsyjINJY
-# CcwY+NZuhVALIBWoGmMBXI98ET8giAxM6n8MlmXvG4OcXRysjasuVXbcazDFJn07
-# Qpd6R2to8GckTH8KnGgXuV48XBkTET2xUyvPakuFYmWRXcIBP/Atq8xDukD3IJwe
-# X3NOdRqBYpkWT2byvVNASGW3qNIRzBo2jJAURqsrdQx4H006RscvFQKPYNCcoYIC
+# gjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBTZT+ViLYPFzjuV
+# 7yLu1pGMduuDNTANBgkqhkiG9w0BAQEFAASCAQB6V0KXkYMiDSq/B17vB2PjmoXp
+# ksRjxj25jcGrwmwgK1Q7xq1MT4xfRtiHK7Il/d160mtmcDSsuxuWU3k6Bwl9mhJh
+# ZkBAQv1NXoWxIjRju9rzIsJzOeY6OpESmWypXcUabFWZbixpsiOguYEvznacwWdD
+# zyBTQn4gKUw3+9AQe3IhClY6g0LidgTqgU7KjmJDiTBpI8JkTSJvsu9EVxYsylE9
+# vHAXEg+Ut0gvu8RDg/kB6r9QZYOxB1zNJvm99VM/QFpE/FPW79K/p+zyVx9Qaao+
+# 4YOfTqQxUf+6pPmN7mj2OfzjA1G6Vq9v2Pyglg8BKvV5tKQvjzWiSQeakFMyoYIC
 # RDCCAkAGCSqGSIb3DQEJBjGCAjEwggItAgEAMIGqMIGVMQswCQYDVQQGEwJVUzEL
 # MAkGA1UECBMCVVQxFzAVBgNVBAcTDlNhbHQgTGFrZSBDaXR5MR4wHAYDVQQKExVU
 # aGUgVVNFUlRSVVNUIE5ldHdvcmsxITAfBgNVBAsTGGh0dHA6Ly93d3cudXNlcnRy
 # dXN0LmNvbTEdMBsGA1UEAxMUVVROLVVTRVJGaXJzdC1PYmplY3QCEEeKjvtZ4dg/
 # DOFC0qKHB74wCQYFKw4DAhoFAKBdMBgGCSqGSIb3DQEJAzELBgkqhkiG9w0BBwEw
-# HAYJKoZIhvcNAQkFMQ8XDTEzMDUyMTA2MjgwMFowIwYJKoZIhvcNAQkEMRYEFFQZ
-# FdYa0ZfbrvPB5SCTloz4Bkh+MA0GCSqGSIb3DQEBAQUABIIBADswJb8clVf5qmHl
-# LQnXgdRWBrglQoQZJWAj7zFLAknhsYacR3UAcckcU8d9LUyGs1A84o+RsdLiGThv
-# kufSHqkOvgclVdPAd1MKPLiR7BzDM6uIqnnVF4rqbpMTz/qSZNp4qlg+Q6yRLLKG
-# XwGNyZ7rAiw1F2wFrotGLr9J1wCKTrwRu4JXMEyIZThDWz+O4HfoTx/Z/WLNVVne
-# jPBfDNrWPpKxvzj/M314ZTcXRx+54x4ZbS4FhAJWHQc2o60JdAHXqE2rYXgK/j8b
-# jzLt9XwTqtOJrFtARMNMgRChV6Au1/AnNlWKLNrhxxp9Lmx5ESqEhMejGTrbNDi4
-# YcE1PfY=
+# HAYJKoZIhvcNAQkFMQ8XDTEzMDUyMjA2MDYzM1owIwYJKoZIhvcNAQkEMRYEFMO4
+# 0eStAML3LuPQCIPzQ9XU5KDMMA0GCSqGSIb3DQEBAQUABIIBAGNEf5Win+WpHav9
+# Fx15lINn+hH8auIFwC+Nncme2ZZwrDf+wB2ugcW2ufQgohHDMmbHmZVqGwfGDjb3
+# nzI7kSWQJ/L0EC043edBqe8XdLuSXKmbTrLtZ854FsjkEODHncQr19IzuPInJiY0
+# emRPcwOypH16vdqursVOQYKSEvwV6VoDqJciR/Zk2VmNXPEFN78pQgpCV4wOaRus
+# wavry+riEwJZ/+1c7KpbBydEuuPnWqxDBasRUf1WhRSx1nLVsygUO2zZAwyVUFz3
+# xA/t1J5dsdtLgdiOB05ZKe8Lw0RpGAC/13LU1nMDru9CcWjO68VzqfZKhF+KScE8
+# Mz+IURg=
 # SIG # End signature block
