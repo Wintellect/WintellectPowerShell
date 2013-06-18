@@ -99,7 +99,14 @@ https://github.com/Wintellect/WintellectPowerShell
         [string] $Architecture = ($Env:PROCESSOR_ARCHITECTURE)
     )  
 
-    $versionSearchKey = "HKLM:\SOFTWARE\Microsoft\VisualStudio\SxS\VS7"
+    if ([IntPtr]::size -eq 8)
+    {
+        $versionSearchKey = "HKLM:\SOFTWARE\Wow6432Node\Microsoft\VisualStudio\SxS\VS7"
+    }
+    else
+    {
+        $versionSearchKey = "HKLM:\SOFTWARE\Microsoft\VisualStudio\SxS\VS7"
+    }
     $vsDirectory = ""
 
     if ($VSVersion -eq 'Latest')
