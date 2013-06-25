@@ -76,7 +76,7 @@ VS110COMNTOOLS.
 .PARAMETER VSVersion
 The version of Visual Studio you want to use. If left to the default, Latest, the
 script will look for the latest version of Visual Studio installed on the computer
-as the tools to use. Specify 2008, 2010, 2012, or 2014 for a specific version.
+as the tools to use. Specify 2008, 2010, 2012, or 2013 for a specific version.
 
 .PARAMETER Architecture
 The tools architecture to use. This defaults to the $env:PROCESSOR_ARCHITECTURE 
@@ -92,14 +92,19 @@ https://github.com/Wintellect/WintellectPowerShell
     param
     (
         [Parameter(Position=0)]
-        [ValidateSet("Latest", "2008", "2010", "2012", "2014")]
+        [ValidateSet("Latest", "2008", "2010", "2012", "2013", "2014")]
         [string] $VSVersion = "Latest", 
         [Parameter(Position=1)]
         [ValidateSet("x86", "amd64", "x64", "arm", "x86_arm", "x86_amd64")]
         [string] $Architecture = ($Env:PROCESSOR_ARCHITECTURE)
     )  
 
-    $versionSearchKey = "HKLM:\SOFTWARE\Microsoft\VisualStudio\SxS\VS7"
+    $versionSearchKey = "HKLM:\SOFTWARE\Wow6432Node\Microsoft\VisualStudio\SxS\VS7"
+    if ([IntPtr]::size -ne 8)
+    {
+        $versionSearchKey = "HKLM:\SOFTWARE\Microsoft\VisualStudio\SxS\VS7"    
+    }
+
     $vsDirectory = ""
 
     if ($VSVersion -eq 'Latest')
@@ -123,8 +128,11 @@ https://github.com/Wintellect/WintellectPowerShell
                         "2008" { "9.0" }
                         "2010" { "10.0" }
                         "2012" { "11.0" }
-                        # I have no idea if this is the next version of VS. It's just a guess!
-                        "2014" { "12.0" }
+                        "2013" { "12.0" }
+                        # A little future-proofing. Office skipped version 13 
+                        # because in some cultures 13 is an unlucky number so 
+                        # I figure DevDiv will do the same.
+                        "2014" { "14.0" }
                         default { throw "Unknown version of Visual Studio!" }
                     }
 
@@ -145,8 +153,8 @@ Export-ModuleMember Import-VisualStudioEnvironment
 # SIG # Begin signature block
 # MIIO0QYJKoZIhvcNAQcCoIIOwjCCDr4CAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUWHWKAUhmRfdNUidzis/G4nXz
-# 5dKgggmnMIIEkzCCA3ugAwIBAgIQR4qO+1nh2D8M4ULSoocHvjANBgkqhkiG9w0B
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUkaASTBqLMX21bTb6x44BOety
+# MoGgggmnMIIEkzCCA3ugAwIBAgIQR4qO+1nh2D8M4ULSoocHvjANBgkqhkiG9w0B
 # AQUFADCBlTELMAkGA1UEBhMCVVMxCzAJBgNVBAgTAlVUMRcwFQYDVQQHEw5TYWx0
 # IExha2UgQ2l0eTEeMBwGA1UEChMVVGhlIFVTRVJUUlVTVCBOZXR3b3JrMSEwHwYD
 # VQQLExhodHRwOi8vd3d3LnVzZXJ0cnVzdC5jb20xHTAbBgNVBAMTFFVUTi1VU0VS
@@ -203,24 +211,24 @@ Export-ModuleMember Import-VisualStudioEnvironment
 # Oi8vd3d3LnVzZXJ0cnVzdC5jb20xHTAbBgNVBAMTFFVUTi1VU0VSRmlyc3QtT2Jq
 # ZWN0AhA/+9ToTVeBHv2GK8w5hdxbMAkGBSsOAwIaBQCgeDAYBgorBgEEAYI3AgEM
 # MQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwGCisGAQQB
-# gjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQK3UzimzopTXwD
-# 0nGy5tNMyk6gLzANBgkqhkiG9w0BAQEFAASCAQAX/yTwoPeakagFKthY0PKcJsYn
-# m3ljn5Dk4UdPtGUAo6QdQc2DDmQFd3ZfHqi11UP5vKde1L1/O1AEZ6i1AXt502wH
-# uGSk2+H7xHCB6lR5P6IADgaBtKcVPZQG5P6bVJC1KbkmgUwdHBmCijscIaucSSM3
-# XjssWO48d+AK0Cp8E9JqLyw57h6hCp5yAgs2Oz0qqcZ7x6xPf6VyKy5W48N9Hk+f
-# qfc2CDPN0liUKu6LtJGGEZEhYf0s+A55zb9lrNBqoqfAw7oX91IqZbCsAbr4hNi4
-# cvDKbxT6eC9g1goxrpvBhU1z+/PDMHb2GLQXKPZVCZI1YAsSIJD6oqCtsRU/oYIC
+# gjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBTFqmf20P4xeZvM
+# 6PckDxiakC91dzANBgkqhkiG9w0BAQEFAASCAQCDmykzwLf/URlQAKU0BLCJySnn
+# R+VpvM9ECrVbebCDGz/tTFjwIsKCeyU4cEo/daPZgtUimbDk1sP7uUd0OAQyF67X
+# xpRMnZkfTzkP18774Z+C29k6W4CAQ5yMWXUT7Sp0S9Akua268ixvqcpg+vGtsSSd
+# MKyFHs9Dbuvvw4lB3mqaKfM+mnN4mEFNDiZ6L9K7bRGqpYuIs3MT986nwWIm2ZEM
+# gQPreAHyp1zdabMuYzynU+Z4Q2+7qTxUjZcYWi53JMMUo/ee93XDd9SEXXhIB6Q5
+# eLyoOZvWEnj1W+t+nYJPhbzi6yvFoHnPF7Ok9IXzdvq64EQQ0NihLVeIcAHHoYIC
 # RDCCAkAGCSqGSIb3DQEJBjGCAjEwggItAgEAMIGqMIGVMQswCQYDVQQGEwJVUzEL
 # MAkGA1UECBMCVVQxFzAVBgNVBAcTDlNhbHQgTGFrZSBDaXR5MR4wHAYDVQQKExVU
 # aGUgVVNFUlRSVVNUIE5ldHdvcmsxITAfBgNVBAsTGGh0dHA6Ly93d3cudXNlcnRy
 # dXN0LmNvbTEdMBsGA1UEAxMUVVROLVVTRVJGaXJzdC1PYmplY3QCEEeKjvtZ4dg/
 # DOFC0qKHB74wCQYFKw4DAhoFAKBdMBgGCSqGSIb3DQEJAzELBgkqhkiG9w0BBwEw
-# HAYJKoZIhvcNAQkFMQ8XDTEzMDUyMjA2MDYzMlowIwYJKoZIhvcNAQkEMRYEFIe0
-# ZxAydoFLHVFc/rxZ4sNqNOQoMA0GCSqGSIb3DQEBAQUABIIBAAu6f8SyOv7oK5mR
-# g3swNI+6O28OBDNpuXboi2P7mHeHN7pNjh1wWZBfCjLNHNojhakic/BUkdtwspYY
-# Bris1ucdpPKJ8FZxQd3yhyOgyd+1zn8m1PA2OpghMBi5Dg077+z2SEQ1dOk4l1kK
-# ztefgVcDTXeyQL/O8oCmPaIwrtw7NpdSauTmx7vAEXh+MdI7FIsEmA3Eh44R6dVw
-# cgaYNgy3MNBCiSA/DuZ+2S9mC4xf/B3QQLuILAEHKSGwhdbBIdPfSxlp6OjcUfKs
-# 9sWCJppxC6k0kk+OdQNYSFC95LNEZTMpovTN1WuRJr96bs/m3pGii76uz8cWJidj
-# +g3jrvw=
+# HAYJKoZIhvcNAQkFMQ8XDTEzMDYyNTA0MzYyMlowIwYJKoZIhvcNAQkEMRYEFFOS
+# pRrMkqW9Tvn5UvJ2fty5nRZrMA0GCSqGSIb3DQEBAQUABIIBAEMPIbETJQt0+dtD
+# 6O0vp0aI01Q+55svYl/3FiAK6U8neEtLymj8y0A22X4kwZ7xtUdctYHqfhZMR10g
+# RO5tOPQU6lRFcyw9/QNhIqXbJeXqCqOJRqtB1dZmpXPAuP4k53r25H3nwYu7Ohkc
+# x7uxErSXHr0KBV/9zKH1WKhFmC/kg8uKwGDzLOlwIBge9I5tVAYe6Up2CsIdrG6A
+# kgDxs8o9bgBufkZ0FtvCBwawrrcWSxWqFTsS/9RBH4xOvF4hv7yp3bpeUIT0UGkk
+# 1pEmcPIkHcdGWaKxOF78HBMqpQZ//Udq++2SN3b/bYuv+eEsOm3c9FQVXHweonre
+# RwUAZYk=
 # SIG # End signature block

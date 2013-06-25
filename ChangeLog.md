@@ -1,5 +1,9 @@
 # Wintellect PowerShell Change Log #
 
+
+## June 24, 2013
+Fixed a bug in Import-VisuaStudioEnvironment where I should be looking at the Wow6432Node on x64 dev boxes reported by [RaHe67](https://github.com/RaHe67). Also updated the cmdlet with the official version and name of VS 2013.
+
 ## May 20, 2013
 Updated the Set-SymbolServer -public switch to use the same cache on both the reference source and msdl download items. With VS 2012 this works better and helps avoid multiple downloads of various PDB files. Since I no longer use VS 2010, I'm not sure what affect this will have on that version. Also, I turn off using the Microsoft symbol servers as I'm putting them all in the _NT_SYMBOL_PATH environment variable anyway.
 
