@@ -15,6 +15,7 @@ Set-StrictMode -version Latest
 ###############################################################################
 $script:devTenDebuggerRegKey = "HKCU:\Software\Microsoft\VisualStudio\10.0\Debugger"
 $script:devElevenDebuggerRegKey = "HKCU:\Software\Microsoft\VisualStudio\11.0\Debugger"
+$script:devTwelveDebuggerRegKey = "HKCU:\Software\Microsoft\VisualStudio\12.0\Debugger"
 
 ###############################################################################
 # Module Only Functions
@@ -40,6 +41,11 @@ function GetCommonSettings($regValue, $envVariable)
     {
         $returnHash["VS 2012"] = 
                 (Get-ItemProperty $devElevenDebuggerRegKey).$regValue
+    }
+    if (Test-Path $devTwelveDebuggerRegKey)
+    {
+        $returnHash["VS 2013"] = 
+                (Get-ItemProperty $devTwelveDebuggerRegKey).$regValue
     }
     $envVal = Get-ItemProperty HKCU:\Environment $envVariable -ErrorAction SilentlyContinue
     if ($envVal -ne $null)
@@ -141,13 +147,13 @@ Returns a hashtable of the current source server settings.
 
 .DESCRIPTION
 Returns a hashtable with the current source server directories settings
-for VS 2010, VS 2012, and the _NT_SOURCE_PATH enviroment variable used 
-by WinDBG.
+for VS 2010, VS 2012, VS 2013, and the _NT_SOURCE_PATH enviroment variable 
+used by WinDBG.
 
 .OUTPUTS 
 HashTable
-The keys are, if all present, VS 2010, VS 2012, and WinDBG. The values
-are those set for each debugger.
+The keys are, if all present, VS 2010, VS 2012, VS 2013, and WinDBG. The 
+values are those set for each debugger.
 
 .LINK
 http://www.wintellect.com/blogs/jrobbins
@@ -167,11 +173,11 @@ function Set-SourceServer
 Sets the source server directory.
 
 .DESCRIPTION
-Sets the source server cache directory for VS 2010, VS 2012, and WinDBG 
-through the _NT_SOURCE_PATH environment variable to all reference the same 
-location. This ensures you only download the file once no matter which 
-debugger you use. Because this cmdlet sets an environment variable you 
-need to log off to ensure it's properly set.
+Sets the source server cache directory for VS 2010, VS 2012, VS 2013, and 
+WinDBG  through the _NT_SOURCE_PATH environment variable to all reference 
+the same location. This ensures you only download the file once no matter 
+which debugger you use. Because this cmdlet sets an environment variable 
+you need to log off to ensure it's properly set.
 
 .PARAMETER Directory
 The directory to use. If the directory does not exist, it will be created.
@@ -200,6 +206,11 @@ https://github.com/Wintellect/WintellectPowerShell
         Set-ItemProperty -path $devElevenDebuggerRegKey -Name $sourceServExtractTo -Value $Directory 
     }
     
+    if (Test-Path $devTwelveDebuggerRegKey)
+    {
+        Set-ItemProperty -path $devTwelveDebuggerRegKey -Name $sourceServExtractTo -Value $Directory 
+    }
+
     # Always set the _NT_SOURCE_PATH value for WinDBG.
     Set-ItemProperty -Path HKCU:\Environment -Name _NT_SOURCE_PATH -Value "SRV*$Directory"
     
@@ -219,7 +230,7 @@ Returns a hashtable of the current symbol server settings.
 
 .DESCRIPTION
 Returns a hashtable with the current source server directories settings
-for VS 2010, VS 2012, and the _NT_SYMBOL_PATH enviroment variable.
+for VS 2010, VS 2012, VS 2013, and the _NT_SYMBOL_PATH enviroment variable.
 
 .LINK
 http://www.wintellect.com/blogs/jrobbins
@@ -309,8 +320,8 @@ function Set-SymbolServer
 Sets up a computer to use a symbol server.
 
 DESCRIPTION
-Sets up both the _NT_SYMBOL_PATH environment variable as well as VS 2010 and 
-VS 2012 (if installed) to use a common symbol cache directory as well as common 
+Sets up both the _NT_SYMBOL_PATH environment variable as well as VS 2010, VS 2012, 
+and VS 2013 (if installed) to use a common symbol cache directory as well as common 
 symbol servers.
 
 .PARAMETER Internal
@@ -386,6 +397,12 @@ https://github.com/Wintellect/WintellectPowerShell
         
             SetInternalSymbolServer $devElevenDebuggerRegKey $CacheDirectory $symPath
         }
+
+        if (Test-Path $devTwelveDebuggerRegKey)
+        {
+        
+            SetInternalSymbolServer $devTwelveDebuggerRegKey $CacheDirectory $symPath
+        }
     }
     else
     {
@@ -423,6 +440,11 @@ https://github.com/Wintellect/WintellectPowerShell
         {
             SetPublicSymbolServer $devElevenDebuggerRegKey $CacheDirectory
         }
+
+        if (Test-Path $devTwelveDebuggerRegKey)
+        {
+            SetPublicSymbolServer $devTwelveDebuggerRegKey $CacheDirectory
+        }
     }
     
     ""
@@ -435,8 +457,8 @@ Export-ModuleMember Set-SymbolServer
 # SIG # Begin signature block
 # MIIO0QYJKoZIhvcNAQcCoIIOwjCCDr4CAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUZqtz+Y3L+Exlo+vVMHHq2NiI
-# mTqgggmnMIIEkzCCA3ugAwIBAgIQR4qO+1nh2D8M4ULSoocHvjANBgkqhkiG9w0B
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUt9a8JPrc/DzQ9Q52RIfoPMnb
+# UKWgggmnMIIEkzCCA3ugAwIBAgIQR4qO+1nh2D8M4ULSoocHvjANBgkqhkiG9w0B
 # AQUFADCBlTELMAkGA1UEBhMCVVMxCzAJBgNVBAgTAlVUMRcwFQYDVQQHEw5TYWx0
 # IExha2UgQ2l0eTEeMBwGA1UEChMVVGhlIFVTRVJUUlVTVCBOZXR3b3JrMSEwHwYD
 # VQQLExhodHRwOi8vd3d3LnVzZXJ0cnVzdC5jb20xHTAbBgNVBAMTFFVUTi1VU0VS
@@ -493,24 +515,24 @@ Export-ModuleMember Set-SymbolServer
 # Oi8vd3d3LnVzZXJ0cnVzdC5jb20xHTAbBgNVBAMTFFVUTi1VU0VSRmlyc3QtT2Jq
 # ZWN0AhA/+9ToTVeBHv2GK8w5hdxbMAkGBSsOAwIaBQCgeDAYBgorBgEEAYI3AgEM
 # MQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwGCisGAQQB
-# gjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQZvfmmCSflLgX5
-# LQy0+hDa6XYruTANBgkqhkiG9w0BAQEFAASCAQBt1UhFMFOTuOOqBn/ck0QWWXO1
-# Re6CwvmGyR/n9o4jR8Hj6Xe/NoiWt8UTL1IRAhSpfWOnr0QNgiKkJIYPanzVfBwN
-# xB7vtXDkbSJJVM4yDyeSgcPbreWLXrdbtESVSoXcrwjnTxG7fVgsnRjDnuGYIOvx
-# wTQzR9BDMw1G5UmJBonWESCBsER36crRQkayk9Q1o2KdD9ajwqJyRotDEpZl1ADU
-# HOvXtgENdJ6d8elG+/k47UQF0hJGeqSY+AsmljIBiEPHpPuN2vPlGXkGrSgCfh9Z
-# ML+5/NgN2zS3elexH3MgJzNpHn2xjVlNwvKEIa6cfaAmQZMGtBfdOjKeymNLoYIC
+# gjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBSKWpnczAWvBkrw
+# 2aB9vpKDfwFRnTANBgkqhkiG9w0BAQEFAASCAQAiLtcphNKwoXaiaCdYIdwN3Wvj
+# sQELndc1goqNJB8AOXBl7bPchXQ/ymzgZqNv2jZemLlMN4U98LThR7QFG3pQOoCc
+# OiGaYmaLrQtB1OxQuNQ6JL3pgyCFqsOnOFqKaUFCOHOvftzlrD/rF+kTfQVKZRZs
+# hrRTOlmU0TFD1x3CSxIaeFo3UjkwDuIoKqIY5Y3VGzTOlETxCMflqaSKy2n7tlXR
+# AcqF9NhZ9/8yiZAonOnIkTW/PIg4xAvzQ5qWHroY3ylgnJSVxnnaqos4W3EJU4Za
+# DiqKTM4YQVT23rLSWLX/NUYX5fxwg4AJHOHh2PZUo90YluGDGv0N3kfy/cnioYIC
 # RDCCAkAGCSqGSIb3DQEJBjGCAjEwggItAgEAMIGqMIGVMQswCQYDVQQGEwJVUzEL
 # MAkGA1UECBMCVVQxFzAVBgNVBAcTDlNhbHQgTGFrZSBDaXR5MR4wHAYDVQQKExVU
 # aGUgVVNFUlRSVVNUIE5ldHdvcmsxITAfBgNVBAsTGGh0dHA6Ly93d3cudXNlcnRy
 # dXN0LmNvbTEdMBsGA1UEAxMUVVROLVVTRVJGaXJzdC1PYmplY3QCEEeKjvtZ4dg/
 # DOFC0qKHB74wCQYFKw4DAhoFAKBdMBgGCSqGSIb3DQEJAzELBgkqhkiG9w0BBwEw
-# HAYJKoZIhvcNAQkFMQ8XDTEzMDUyMjA2MDYzM1owIwYJKoZIhvcNAQkEMRYEFMeB
-# MhTIYTzquOqTycq791wJFheeMA0GCSqGSIb3DQEBAQUABIIBAJTiDZcYcuxhtATe
-# cFFKO+kZ9DyJM6BrI0NU/9Ao5Z5R5Y3aKx5B66EqUDRVMZJBaxNifXAEUzdxdUFd
-# Tsl1Q25krp+jn0TkkZipQK8Un8SsfkcOSR20IuhtgVVq98sbyrZhDj33C/gIArlG
-# 1oD8qfTHZiJ7C3fpZtJQCp9telvDkMfgVpJAwxWUVAWbjxzNq4Dq2XxzWF5Iscj4
-# RYhDFXUYXs8zMnseYUn1ROE8lkt4EY2WBgEzf7Qc3uyrStJ0uvnog4QmUmtQ/4uC
-# tyMQTC+kLfPztZXGpIxjevkSRi8Z0KkGamu5ugS7RPRUUxSLQ6bQA/TSlGUGpSEj
-# i79W8wQ=
+# HAYJKoZIhvcNAQkFMQ8XDTEzMDcxODAxNDMwMlowIwYJKoZIhvcNAQkEMRYEFNji
+# 0L5n2KifSOT6jrubIrVzliO+MA0GCSqGSIb3DQEBAQUABIIBAC+EJzi9PxPMyKpC
+# WCVn9bzEo9YmSFuh5V5SJ/zr40LmCaad922U9/URyxIy8IkAJPozMLYZEv9ZQI9C
+# 3WsTKUcCGOZr6uRjSjZfm4eXbyx/hoWJ6SNZtTcBe0Hg0djqdcT+XGVsiFsgfy1Q
+# 6N0NAc2pHK/nP38OnBcqkSqYGjfgT7vSZTkmnGnicJAJrtc/UcrTkkEtSeNB7YMf
+# Mcbg++unXUh/dVQGVgV9oR5ClPMogU+2s2N6iwLV+UMPF6KLVAf8IpyoqqmDc6DU
+# K4jibUIFi7LEy2EkCnxjt1zC0HZZRgNKzHe2cpdvsax9EdAS5+6+GBZzAOKmTmF5
+# yl4rzVY=
 # SIG # End signature block

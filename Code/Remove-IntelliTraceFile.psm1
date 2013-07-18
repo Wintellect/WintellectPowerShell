@@ -33,12 +33,12 @@ cmdlet checks to see if you are storing the files and if you are, deletes any
 files found in the storage directory. Since IntelliTrace files can take up a 
 lot of disk space, it's good to clean out that directory every once in a while.
 
-By default, this script works with Visual Studio 2012, but if you need to 
-delete the IntelliTrace files for Visual Studio 2010, pass the -VS2010 switch.
+By default, this script works with Visual Studio 2010, 2012, and 2013 with the
+default being VS 2013.
 
-.PARAMETER VS2010
-Removes the stored IntelliTrace files for VS 2010. If not specified, does the 
-deletions for VS 2012.
+.PARAMETER VSVersion
+Removes the stored IntelliTrace files for VS 2013 by default, specify VS 2010 or VS 2012
+for those versions.
 
 .LINK
 http://www.wintellect.com/blogs/jrobbins
@@ -46,7 +46,10 @@ https://github.com/Wintellect/WintellectPowerShell
 
 #>
     [CmdLetBinding(SupportsShouldProcess=$true)]
-    param ( [switch] $VS2010 )
+    param ( 
+            [ValidateSet("VS2010", "VS2012", "VS2013")]
+            [string] $VSVersion = "VS2013"
+          )
 
     # First check if VS is running. If so, we can't continue as it may be using
     # the .iTrace files.
@@ -56,15 +59,20 @@ https://github.com/Wintellect/WintellectPowerShell
         throw "Visual Studio is running. Please close all instances."
     }
 
-    # Default to VS 2012.
-    $vsVersion = "11.0"
-    if ($VS2010)
+    
+    # Default to VS 2013.
+    $vsNumber = "12.0"
+    if ($VSVersion -eq "VS2010")
     {
-        $vsVersion = "10.0"
+        $vsNumber = "10.0"
+    }
+    elseif ($VSVersion -eq "VS2012")
+    {
+        $vsNumber = "11.0"
     }
 
     $regKey = "HKCU:\Software\Microsoft\VisualStudio\" + 
-              $vsVersion + 
+              $vsNumber + 
               "\DialogPage\Microsoft.VisualStudio.TraceLogPackage.ToolsOptionAdvanced"
 
     # Check to see if the user has set the options to save files. If not bail out.
@@ -97,8 +105,8 @@ https://github.com/Wintellect/WintellectPowerShell
 # SIG # Begin signature block
 # MIIO0QYJKoZIhvcNAQcCoIIOwjCCDr4CAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUIW1fchf0qzPHhnL31Yw+tWPs
-# C1ygggmnMIIEkzCCA3ugAwIBAgIQR4qO+1nh2D8M4ULSoocHvjANBgkqhkiG9w0B
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUSr1epXv6wodOBIqie9p2CPfr
+# NmWgggmnMIIEkzCCA3ugAwIBAgIQR4qO+1nh2D8M4ULSoocHvjANBgkqhkiG9w0B
 # AQUFADCBlTELMAkGA1UEBhMCVVMxCzAJBgNVBAgTAlVUMRcwFQYDVQQHEw5TYWx0
 # IExha2UgQ2l0eTEeMBwGA1UEChMVVGhlIFVTRVJUUlVTVCBOZXR3b3JrMSEwHwYD
 # VQQLExhodHRwOi8vd3d3LnVzZXJ0cnVzdC5jb20xHTAbBgNVBAMTFFVUTi1VU0VS
@@ -155,24 +163,24 @@ https://github.com/Wintellect/WintellectPowerShell
 # Oi8vd3d3LnVzZXJ0cnVzdC5jb20xHTAbBgNVBAMTFFVUTi1VU0VSRmlyc3QtT2Jq
 # ZWN0AhA/+9ToTVeBHv2GK8w5hdxbMAkGBSsOAwIaBQCgeDAYBgorBgEEAYI3AgEM
 # MQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwGCisGAQQB
-# gjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQynhxb1Zru12SZ
-# ZD50BdSIu0HBCjANBgkqhkiG9w0BAQEFAASCAQCQ2NypY7XXSW3CMGw/qJOOFKuo
-# z0gCSLeUZqOd914Hw4GziASxb3D1YtdT2dUlE/w+L7HTfexgQcoejVKtB+EppWxe
-# f8+cSi4IBhsV5PiEYlC+YF+bDFjYjKkVTpmcH7NUQNx8JWgdOO12jXMEuxCH4Mf7
-# ufBJh0RhJ2ia61br+BrbzwRBpcw3VwmppckpLEcmoGTu73fX0yUwaSEJsBzADzt1
-# 0WpA2xFNIcVs1C7wRbrX95wUXhozFKZjmZW8NiE6G5SCQ2315oDQsdcUqwuTlQcR
-# TNkxCQpRokHPMnRSqE0EZQrX4yk9tgIl34YTMDywma43Q5Cuq/zJffzzeLucoYIC
+# gjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBSdwadJAgemyfPu
+# OyNGgIw9BEpbUzANBgkqhkiG9w0BAQEFAASCAQCKOoShSVEnfck2B1iMx6t8pyx5
+# LUcWclJLZCzjWHZ/fDWFz34xgDl8HMlc6vZJZtnN1zo04TdKb04CWXJGWXZ5Aj6v
+# z5HSh0/41Hp7MWcYCxNVQczjEM1oBo94K3TUG0xDn8CDlAJ84LdOHdyPrC9aoLQo
+# 9ZbNXebQ+a1kKA/iWhik2PRZomU53HzVdsEmfGd+31tJ/97DLsTmvBbDwKX00Ipr
+# ciMeLcoSwlN100osnPIQMVv+jB2HNScksFY0ZICo2Z8Mdg+wpgUgTzvv2z+r7GBV
+# cVBR035T3/sdJo7pFX56Eo9VtPgnxAkb6HGqeVnZtKLEYTabBDoHVwu2FnHFoYIC
 # RDCCAkAGCSqGSIb3DQEJBjGCAjEwggItAgEAMIGqMIGVMQswCQYDVQQGEwJVUzEL
 # MAkGA1UECBMCVVQxFzAVBgNVBAcTDlNhbHQgTGFrZSBDaXR5MR4wHAYDVQQKExVU
 # aGUgVVNFUlRSVVNUIE5ldHdvcmsxITAfBgNVBAsTGGh0dHA6Ly93d3cudXNlcnRy
 # dXN0LmNvbTEdMBsGA1UEAxMUVVROLVVTRVJGaXJzdC1PYmplY3QCEEeKjvtZ4dg/
 # DOFC0qKHB74wCQYFKw4DAhoFAKBdMBgGCSqGSIb3DQEJAzELBgkqhkiG9w0BBwEw
-# HAYJKoZIhvcNAQkFMQ8XDTEzMDUyMjA2MDYzM1owIwYJKoZIhvcNAQkEMRYEFItl
-# rVrhwV15CIdnbatHgev46HSVMA0GCSqGSIb3DQEBAQUABIIBAHUAQ8rrdVah9VzX
-# kePAdaWP6jlvn3cFBpgBxDFDOcexILHVR6tDMmiLjf9YdkwH8UjoJhHBALHr4X+x
-# jGXqL7SavuFqSAWS8R8kFA853x3YhZNLR7GAZ5+NcEFyfQ7t/h4aFv5errAudEbD
-# Bbu3vBnPQzh1MzWzcfz6XxzcRKpdCqMeq4Nk2DUUvAmxAl8RRbPk+7SPF9QRU4zI
-# mEfzRQf45h5ogkDVQL36Z//G9uXXgiljM2wgngRP/h5pUjSHzOL5xyzWh1DcwUHj
-# +btdOHem3Azmvl/YWeemDH2hi93yo/DT/1fxyiHinbY42KqoQy8oxElsJwovpFqE
-# iHgk4B0=
+# HAYJKoZIhvcNAQkFMQ8XDTEzMDcxODAxNDMwMlowIwYJKoZIhvcNAQkEMRYEFIZG
+# pxaO0qIfiroNBDcGlZ2NvE+6MA0GCSqGSIb3DQEBAQUABIIBAFpnKPIlcjLwiZc9
+# LnqHUM/Yo0DZZgDa3N+C6kixqalq2yCS88Ntyot7NvZioCxRdDkVt1UVqUIDOzKl
+# XbWFxSJGgHYiY1LKNGlNhdsGTWUtYvkyfU8iKMidE/Du8jR1RtuNfXcBhDtN48BB
+# Xc4NHSwqGz3OyTPtPu/PJ0iPlQPbYiHHG104HIiDnOVmtzqoL5xTxibuOrwv0BaF
+# kU65OLXhRIW2CiH579D6uFC4q80doAt2uMVqRBWhoh3en8/OkJTH3vC1YQvXxf6p
+# hsN1AsQ1vs2wgzQ02xVbtSSRGRaoXTTJ7G0WTzCO+pXRsR3goXZddPPbWQ5dRoUq
+# GRt/2ls=
 # SIG # End signature block

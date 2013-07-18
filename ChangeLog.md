@@ -1,5 +1,7 @@
 # Wintellect PowerShell Change Log #
 
+## July 17, 2013
+Updated Set-SymbolServer, Set-SourceServer, Get-SourceServer, and Remove-IntelliTraceFiles to support VS 2013.
 
 ## June 24, 2013
 Fixed a bug in Import-VisuaStudioEnvironment where I should be looking at the Wow6432Node on x64 dev boxes reported by [RaHe67](https://github.com/RaHe67). Also updated the cmdlet with the official version and name of VS 2013.
