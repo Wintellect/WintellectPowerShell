@@ -1,5 +1,12 @@
 # Wintellect PowerShell Change Log #
 
+## November 18, 2013
+Fixed a copy pasta bug in Get-SourceServerFiles
+
+Add-NgenPdbs now properly supports VS 2013
+
+Re-digitally signed everything with my new code signing certificate as the old one was expiring. I didn't have to do that but was signing the changed file so went ahead and did all of them.
+
 ## July 17, 2013
 Updated Set-SymbolServer, Set-SourceServer, Get-SourceServer, and Remove-IntelliTraceFiles to support VS 2013.
 
