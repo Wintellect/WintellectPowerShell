@@ -302,7 +302,7 @@ https://github.com/Wintellect/WintellectPowerShell
         throw "The specified cache directory does not exist."
     }
     
-    $cmd = "$SrcTool -d:$CacheDirectory -x $_.FullName"
+    $cmd = $SrcTool
     
     # Get all the PDB files, execute SRCTOOL.EXE on each one.
     Get-ChildItem -Recurse -Include *.pdb -Path $cacheDirectory | `
