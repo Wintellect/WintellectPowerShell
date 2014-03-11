@@ -1,5 +1,8 @@
 # Wintellect PowerShell Change Log #
 
+## March 11, 2014
+Fixed a bug in Compare-Directories.
+
 ## November 18, 2013
 Fixed a copy pasta bug in Get-SourceServerFiles
 

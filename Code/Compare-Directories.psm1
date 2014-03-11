@@ -103,6 +103,11 @@ i.pptx                         =>
     # I need the real paths for the two input directories.
     $OriginalDir = (Resolve-Path $OriginalDir).ToString().Trim("\")
     $NewDir = (Resolve-Path $NewDir).ToString().Trim("\")
+    # When you do a Resolve-Path on a network share you get the 
+    # Microsoft.PowerShell.Core\FileSystem:: added to the name so 
+    # yank it off if there.
+    $OriginalDir = StripFileSystem -directory $OriginalDir
+    $NewDir = StripFileSystem -directory $NewDir
 
     # Do the work to find all the files.
     $origFiles = Get-ChildItem -Path $OriginalDir -Recurse:$Recurse -Force:$Force -Exclude $Excludes
@@ -180,11 +185,23 @@ i.pptx                         =>
     $resultHash.GetEnumerator()  | Sort-Object -Property Name
 }
 
+function StripFileSystem([string]$directory)
+{
+    $fsText = "Microsoft.PowerShell.Core\FileSystem::" 
+    if ($directory.StartsWith($fsText))
+    {
+        $fsLen = $fsText.Length
+        $dirLen = $directory.Length
+        $directory = $directory.Substring($fsLen,$dirLen - $fsLen)
+    }
+    return $directory
+}
+
 # SIG # Begin signature block
 # MIIYSwYJKoZIhvcNAQcCoIIYPDCCGDgCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU5g1R8jyzEi/HWARTkutIaz6I
-# Z9WgghM8MIIEhDCCA2ygAwIBAgIQQhrylAmEGR9SCkvGJCanSzANBgkqhkiG9w0B
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQULpAmNud1EY7qgJxWI1+U8TfO
+# sJCgghM8MIIEhDCCA2ygAwIBAgIQQhrylAmEGR9SCkvGJCanSzANBgkqhkiG9w0B
 # AQUFADBvMQswCQYDVQQGEwJTRTEUMBIGA1UEChMLQWRkVHJ1c3QgQUIxJjAkBgNV
 # BAsTHUFkZFRydXN0IEV4dGVybmFsIFRUUCBOZXR3b3JrMSIwIAYDVQQDExlBZGRU
 # cnVzdCBFeHRlcm5hbCBDQSBSb290MB4XDTA1MDYwNzA4MDkxMFoXDTIwMDUzMDEw
@@ -292,23 +309,23 @@ i.pptx                         =>
 # VQQDExhDT01PRE8gQ29kZSBTaWduaW5nIENBIDICEHF/qKkhW4DS4HFGfg8Z8PIw
 # CQYFKw4DAhoFAKB4MBgGCisGAQQBgjcCAQwxCjAIoAKAAKECgAAwGQYJKoZIhvcN
 # AQkDMQwGCisGAQQBgjcCAQQwHAYKKwYBBAGCNwIBCzEOMAwGCisGAQQBgjcCARUw
-# IwYJKoZIhvcNAQkEMRYEFPfKq0TY35DiMP+ddHt8Lg+R1y4uMA0GCSqGSIb3DQEB
-# AQUABIIBAAI4+TzJQegPqZKkDxNj/JNt3kOULTyVJH0Lvzowz16Frq/AjOABLB1b
-# oMV1Ijm0Wb4HzA+CeiKu+auORp6nZwhMQeqcX4tYGDpwmmsSVaLZ+inrymgtwXxA
-# RFiQOK492pKErb0o7EryP7qevlI16b++Vg2WMICCbyTqLcFY0UAEPG7QNnWM+fUB
-# QHGR1cl9x+Gdend60pu+XIvnf1bJQbJqViwvSj9wzkxBRf09EmOhx0NKyf2SZWS5
-# 1dbuwG7L08BAKL11ZBzEcq5XSFnpRI9NKs87ost+1obLD+/0q38nXluvhdBtvUFi
-# adlBP5gcEQ095mzZ/qEj0ka2EyiI+qChggJEMIICQAYJKoZIhvcNAQkGMYICMTCC
+# IwYJKoZIhvcNAQkEMRYEFDB3xk9gMWPM3Lk4D56jVye1MnTRMA0GCSqGSIb3DQEB
+# AQUABIIBAGxMsKhJYubowsru5DV+atMr0yx/Y5dkMxTt+6x0k15tNcsL0vGeBzfZ
+# v41mjwpsnehyYpRURq+7dAQnvoPZgyDWU58+8+gPNhysfAgeLkFmi0jj91ZNEUWz
+# ScvmmVAw3yYyFa2RkdBEIeEzFKhiJfd0OdvZXAJj1hG0FsywR4AxQbIMNjwPi4RO
+# AVeWDm1ZhIi2VTbbSAPDKmAac1Y+38V3k/zye+tsxpa+e+DIBWp2vigiVwqwpu6W
+# L3HAf0nC71GzXUyxY6q1Rjf4TjHwOGfbqnzD76uBD2ryX4mRrr8FS9079U+/oU7e
+# 4Sqap112HpTir75/PKlXuQ6tvx9DA2qhggJEMIICQAYJKoZIhvcNAQkGMYICMTCC
 # Ai0CAQAwgaowgZUxCzAJBgNVBAYTAlVTMQswCQYDVQQIEwJVVDEXMBUGA1UEBxMO
 # U2FsdCBMYWtlIENpdHkxHjAcBgNVBAoTFVRoZSBVU0VSVFJVU1QgTmV0d29yazEh
 # MB8GA1UECxMYaHR0cDovL3d3dy51c2VydHJ1c3QuY29tMR0wGwYDVQQDExRVVE4t
 # VVNFUkZpcnN0LU9iamVjdAIQR4qO+1nh2D8M4ULSoocHvjAJBgUrDgMCGgUAoF0w
-# GAYJKoZIhvcNAQkDMQsGCSqGSIb3DQEHATAcBgkqhkiG9w0BCQUxDxcNMTMxMTA4
-# MjIxMTAzWjAjBgkqhkiG9w0BCQQxFgQUHRVVRpptPab9ftTeccfELcUMjNEwDQYJ
-# KoZIhvcNAQEBBQAEggEAeI6D99Nxlhj+DpZDiJyEl9GVCytSUU8K+3WxJXMo8GqQ
-# H5EwnBsgZ918VOqe9T6EBGyzhLOdjU4F/Ep/oX/WPS+ds0K0YUL5db7aMCNB9VSd
-# NgfeT1pS/P7aRRv6GNvpuyP3lw/EHaVBn3jJa0ZYrDuEiGdhH9jVgVDsFZJkHChJ
-# f02+SJw3GxWtEh19bDwSfpLhkqF+R91RkAgD1gpWuFx093IWGVXEy07gDr2lbtgF
-# 2/6NUPRDM88vtlLSpqDYhS5tmiSW0BkEIkw3oPdlv5mWlWupiM+AGGMsj07B13uS
-# lF8IPrg71Qao0YoM5UdVb+TFF8HO0G89wIF5TBXklQ==
+# GAYJKoZIhvcNAQkDMQsGCSqGSIb3DQEHATAcBgkqhkiG9w0BCQUxDxcNMTQwMzEx
+# MjI0NzE1WjAjBgkqhkiG9w0BCQQxFgQUG9xV8USQsKgWTsj/2sW3Nd2pFNgwDQYJ
+# KoZIhvcNAQEBBQAEggEAJnDLUdLx0WyaHpFwm988Fa6uwZP93LtfgtH5FRkEyQQL
+# ld0DyFJzxICBce/tEK16YA1zK5myhmN9zd1Vzv9yD5bUI/VM4EXAiJrlQ0aU13+9
+# DdWoQ4IMNTC+9DTWhLqDvyXDBwSQNDDXu4BlIljW+QXyffX+xurCb0DA1vdB0B0P
+# MI9OZ5Wb2DB03NY4WQD78fHww1u+q3Agb4bTuYLDdFuww3XrA75aOxjx7g4QSbsi
+# CcVq34qqBNzYFvC+D+rTGWSt4tCa91qXR4kbyIi4hJt5lHzpnYAtI7CSBd4V3JhS
+# gihSL5Z8rUQxBKU45tDXj3T+/zUld2KIx6sqZLOPgw==
 # SIG # End signature block
