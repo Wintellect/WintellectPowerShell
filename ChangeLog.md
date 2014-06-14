@@ -1,5 +1,12 @@
 # Wintellect PowerShell Change Log #
 
+## June 13, 2014
+Fixed an issue with relative paths in Expand-ZipFile
+
+Added the -CurrentEnvironmentOnly  switch to both Set-SymbolServer and Set-SourceServer that changes on the environment variables for the current PowerShell window. This is only useful when using WinDBG because Visual Studio requires registry settings instead of environment variables.
+
+For the two files I touched, ensured they are clean as reported by Microsoft's Script Analyzer plug in.
+
 ## March 11, 2014
 Fixed a bug in Compare-Directories.
 

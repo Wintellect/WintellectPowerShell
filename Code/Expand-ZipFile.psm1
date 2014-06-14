@@ -1,7 +1,7 @@
 #requires -version 2.0
 ###############################################################################
 # WintellectPowerShell Module
-# Copyright (c) 2010-2013 - John Robbins/Wintellect
+# Copyright (c) 2010-2014 - John Robbins/Wintellect
 # 
 # Do whatever you want with this module, but please do give credit.
 ###############################################################################
@@ -47,18 +47,19 @@ https://github.com/Wintellect/WintellectPowerShell
     # http://ochoco.blogspot.com/2009/04/quick-bytes-unzipping-zip-file-using.html.
     # Tweaked to be more usable.
     
-    if (! (Test-Path $ZipFile))
+    if (! (Test-Path -Path  $ZipFile))
     {
         throw "The zip file must exist."
     }
     
-    New-Item -ItemType Directory -Path $Destination -ErrorAction SilentlyContinue > $null
+    New-Item  -Path $Destination -ItemType Directory -ErrorAction SilentlyContinue > $null
     
-    # It's important you get the full path at the shell application fails if 
-    # you're using a relative path.
-    $Destination = Resolve-Path $Destination
+    # It's important you get the full path for everything or the shell application
+    # doesn't like you.
+    $Destination = Resolve-Path -Path $Destination 
+    $ZipFile = Resolve-Path -Path $ZipFile
     
-    $shellApplication = new-object -com shell.application 
+    $shellApplication = New-Object -ComObject shell.application 
     $zipPackage = $shellApplication.NameSpace($ZipFile) 
     $destinationFolder = $shellApplication.NameSpace($Destination) 
     # The first parameter to CopyHere are all the files, the second parameter
@@ -72,8 +73,8 @@ https://github.com/Wintellect/WintellectPowerShell
 # SIG # Begin signature block
 # MIIYSwYJKoZIhvcNAQcCoIIYPDCCGDgCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUrm0fazZ6K91oxfad7qF0W472
-# rYCgghM8MIIEhDCCA2ygAwIBAgIQQhrylAmEGR9SCkvGJCanSzANBgkqhkiG9w0B
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUk5b6UN5az6BDue7lCic/sKQu
+# mvKgghM8MIIEhDCCA2ygAwIBAgIQQhrylAmEGR9SCkvGJCanSzANBgkqhkiG9w0B
 # AQUFADBvMQswCQYDVQQGEwJTRTEUMBIGA1UEChMLQWRkVHJ1c3QgQUIxJjAkBgNV
 # BAsTHUFkZFRydXN0IEV4dGVybmFsIFRUUCBOZXR3b3JrMSIwIAYDVQQDExlBZGRU
 # cnVzdCBFeHRlcm5hbCBDQSBSb290MB4XDTA1MDYwNzA4MDkxMFoXDTIwMDUzMDEw
@@ -181,23 +182,23 @@ https://github.com/Wintellect/WintellectPowerShell
 # VQQDExhDT01PRE8gQ29kZSBTaWduaW5nIENBIDICEHF/qKkhW4DS4HFGfg8Z8PIw
 # CQYFKw4DAhoFAKB4MBgGCisGAQQBgjcCAQwxCjAIoAKAAKECgAAwGQYJKoZIhvcN
 # AQkDMQwGCisGAQQBgjcCAQQwHAYKKwYBBAGCNwIBCzEOMAwGCisGAQQBgjcCARUw
-# IwYJKoZIhvcNAQkEMRYEFH1qw8Q4Ic78BS2epmVbEkqdB63EMA0GCSqGSIb3DQEB
-# AQUABIIBAH1/PqGTUKIPAuTsDYHR93a4mUT6HDbiQTefz3ggnkcZrzQGLjtpvnDz
-# uG6zOOglz84PTy+8rlpYnEqPeQoXgHk4uz3KiKjAQz3baHh/F8SHA9WT6ENL9FyF
-# 3mzgSqQa//HSFfHPIa8LU9Gzdk7PL0DaZhp0y9UwAgF6M8xLHrgHrRnf7SiV2F6U
-# yrVQbJrRGAadZFPT7UbV2B0LVZK+c/ooCrvTZbhbhjh3Sl8X4WvCkDyHTlB+odn5
-# QNpxgyR/i/4i2yz28dmX6/VQ/j18FSyRcZgmqTilAa2JWWXxQhPQuljcIG0maKQv
-# XSxbSZjGQXKdiMj8HkHolrLEWRX0wuihggJEMIICQAYJKoZIhvcNAQkGMYICMTCC
+# IwYJKoZIhvcNAQkEMRYEFOmODXOhnYjRca5iAfRJCcYt5tGFMA0GCSqGSIb3DQEB
+# AQUABIIBABnpgwSfQsRLlw+5CFxrEadlnQVW4vushInCbUnYNgeQ5xIMHrHCID6s
+# 85CRbqXrzNd7iJgFXI2gAfr+YymArkbhrEV96tzVYCeJdr+zRV5VQ5q5swJdkHNt
+# ehqVOGcguKTDbKh1xAtDENQRRhNOKrzyu4M/lq3C0keIEv3sBY5MUZRZ9TX8e0ox
+# RR+vGQA2P8uIbBq2Fm6nfkhTSIZ6gRsbYCmIcEhIPpqqNiyiQmSNsHrOgXf3YVH/
+# fHXWoWFCQf2BuRpiXj4tdwCIF/niv5NZAKBJxmWLX4gvI7Ao/y6qb+U2dWeYTGvG
+# VCjph5PGKylISRTWkwUGhaECUe5vllWhggJEMIICQAYJKoZIhvcNAQkGMYICMTCC
 # Ai0CAQAwgaowgZUxCzAJBgNVBAYTAlVTMQswCQYDVQQIEwJVVDEXMBUGA1UEBxMO
 # U2FsdCBMYWtlIENpdHkxHjAcBgNVBAoTFVRoZSBVU0VSVFJVU1QgTmV0d29yazEh
 # MB8GA1UECxMYaHR0cDovL3d3dy51c2VydHJ1c3QuY29tMR0wGwYDVQQDExRVVE4t
 # VVNFUkZpcnN0LU9iamVjdAIQR4qO+1nh2D8M4ULSoocHvjAJBgUrDgMCGgUAoF0w
-# GAYJKoZIhvcNAQkDMQsGCSqGSIb3DQEHATAcBgkqhkiG9w0BCQUxDxcNMTMxMTA4
-# MjIxMTAzWjAjBgkqhkiG9w0BCQQxFgQUTvd1sLra6uhMytM+TD6CmDs2sV8wDQYJ
-# KoZIhvcNAQEBBQAEggEAC7rRRdvgMbInlB0Nyy1Os5XkyuNb9wrEGYfDm+v87AGr
-# UwoServrrS21ETcVSaWSUfQOURRMmZiDQUrLUwT1b0FdsDxgc4fu+sFFVnAtjWvP
-# 6Zjv6V+DR174p1875bhTBdyzljrKKR9ZxdFpLMAnKYxR1Xq4pSNYJe5vZIEEzjgP
-# fOhNuZcQHiTl7qnpYc8AQueIH6q0vFAEMflm3UoaxFrtvJWS6Tm2SwahI4a59Qor
-# 6UHbSS9WsopPlAHw94HLU4V8TeWvG1U3bgdPS++//4gFVhVSBD6NujFNB06IszBj
-# wjpmwYYfCnxnk8ne+I9m8LIpYkUXGMBn5P+yVQ6zsw==
+# GAYJKoZIhvcNAQkDMQsGCSqGSIb3DQEHATAcBgkqhkiG9w0BCQUxDxcNMTQwNjE0
+# MDUyNTI0WjAjBgkqhkiG9w0BCQQxFgQUodDo5KEZuzILqHNuL4VnnHrchZswDQYJ
+# KoZIhvcNAQEBBQAEggEARsyFmnQiekc5dWf9GLC9suQCKsnBdTuVGQkr0wiIWHLr
+# tgmyoTYeN3AOR9Na06dey3RVX+9ycudtrlsbAYEpWVaVPAJ1x85MO7Vt3PxJ02Bm
+# 6oYugtSt4nwE1FPYZHKm5aMEMNenz2BMwcyz1wY5zFwbyr7t80vyukD97AFG7wma
+# 5Isszo3gSYPmNjTjW4xNbfDM3Z/+bIjZ0pmFFTmJrRzRLw6t9rAJyDJl8HhwwbPC
+# AVj6eH8BjJ3L2fYSSIKiBabwWoios1hXPn7b98FdWA/TPsSEXXc13McWlQdJckGh
+# SJu/ITOY+BkFg6+Q3E81z1GcVH6cIhP5JNA1dd00+w==
 # SIG # End signature block

@@ -1,7 +1,7 @@
 #requires -version 2.0
 ###############################################################################
 # WintellectPowerShell Module
-# Copyright (c) 2010-2013 - John Robbins/Wintellect
+# Copyright (c) 2010-2014 - John Robbins/Wintellect
 # 
 # Do whatever you want with this module, but please do give credit.
 ###############################################################################
@@ -22,7 +22,7 @@ $script:devTwelveDebuggerRegKey = "HKCU:\Software\Microsoft\VisualStudio\12.0\De
 ###############################################################################
 function CreateDirectoryIfNeeded ( [string] $directory )
 {
-	if ( ! ( Test-Path $directory -type "Container" ) )
+	if ( ! ( Test-Path -Path $directory -type "Container" ) )
 	{
 		New-Item -type directory -Path $directory > $null
 	}
@@ -32,22 +32,22 @@ function CreateDirectoryIfNeeded ( [string] $directory )
 function GetCommonSettings($regValue, $envVariable)
 {
     $returnHash = @{}
-    if (Test-Path $devTenDebuggerRegKey)
+    if (Test-Path -Path $devTenDebuggerRegKey)
     {
         $returnHash["VS 2010"] = 
-                (Get-ItemProperty $devTenDebuggerRegKey).$regValue
+                (Get-ItemProperty -Path $devTenDebuggerRegKey).$regValue
     }
-    if (Test-Path $devElevenDebuggerRegKey)
+    if (Test-Path -Path $devElevenDebuggerRegKey)
     {
         $returnHash["VS 2012"] = 
-                (Get-ItemProperty $devElevenDebuggerRegKey).$regValue
+                (Get-ItemProperty -Path $devElevenDebuggerRegKey).$regValue
     }
-    if (Test-Path $devTwelveDebuggerRegKey)
+    if (Test-Path -Path $devTwelveDebuggerRegKey)
     {
         $returnHash["VS 2013"] = 
-                (Get-ItemProperty $devTwelveDebuggerRegKey).$regValue
+                (Get-ItemProperty -Path $devTwelveDebuggerRegKey).$regValue
     }
-    $envVal = Get-ItemProperty HKCU:\Environment $envVariable -ErrorAction SilentlyContinue
+    $envVal = Get-ItemProperty -Path HKCU:\Environment -Name $envVariable -ErrorAction SilentlyContinue
     if ($envVal -ne $null)
     {
         $returnHash[$envVariable] = $envVal.$envVariable
@@ -85,7 +85,7 @@ function SetInternalSymbolServer([string] $DbgRegKey ,
                                  [string] $SymPath )
 {
 
-    CreateDirectoryIfNeeded $CacheDirectory
+    CreateDirectoryIfNeeded -directory $CacheDirectory
     
     # Turn off Just My Code.
     Set-ItemPropertyScript $dbgRegKey JustMyCode 0 DWORD
@@ -104,7 +104,7 @@ function SetInternalSymbolServer([string] $DbgRegKey ,
 function SetPublicSymbolServer([string] $DbgRegKey , 
                                [string] $CacheDirectory )
 {
-    CreateDirectoryIfNeeded $CacheDirectory
+    CreateDirectoryIfNeeded -directory $CacheDirectory
         
     # Turn off Just My Code.
     Set-ItemPropertyScript $dbgRegKey JustMyCode 0 DWORD
@@ -163,7 +163,7 @@ https://github.com/Wintellect/WintellectPowerShell
     GetCommonSettings SourceServerExtractToDirectory _NT_SOURCE_PATH
 }
 
-Export-ModuleMember Get-SourceServer
+Export-ModuleMember -Function Get-SourceServer
 ###############################################################################
 
 function Set-SourceServer
@@ -182,44 +182,54 @@ you need to log off to ensure it's properly set.
 .PARAMETER Directory
 The directory to use. If the directory does not exist, it will be created.
 
+.PARAMETER CurrentEnvironmentOnly
+If specified will only set the current PowerShell window _NT_SOURCE_PATH 
+environment variable and not overwrite the global settings. This is primarily
+for use with WinDBG as Visual Studio does not use this environment variable.
+
 .LINK
 http://www.wintellect.com/blogs/jrobbins
 https://github.com/Wintellect/WintellectPowerShell
 #>
     param ( 
         [Parameter(Mandatory=$true,
-                   HelpMessage="Please specify the source server directory")]
-        [string] $Directory
+                   HelpMessage="Please specify the source server cache directory")]
+        [string] $Directory,
+        [switch] $CurrentEnvironmentOnly
     ) 
     
     $sourceServExtractTo = "SourceServerExtractToDirectory"
     
     CreateDirectoryIfNeeded $Directory
-    
-    if (Test-Path $devTenDebuggerRegKey)
-    {
-        Set-ItemProperty -path $devTenDebuggerRegKey -Name $sourceServExtractTo -Value $Directory 
-    }
-    
-    if (Test-Path $devElevenDebuggerRegKey)
-    {
-        Set-ItemProperty -path $devElevenDebuggerRegKey -Name $sourceServExtractTo -Value $Directory 
-    }
-    
-    if (Test-Path $devTwelveDebuggerRegKey)
-    {
-        Set-ItemProperty -path $devTwelveDebuggerRegKey -Name $sourceServExtractTo -Value $Directory 
-    }
 
-    # Always set the _NT_SOURCE_PATH value for WinDBG.
-    Set-ItemProperty -Path HKCU:\Environment -Name _NT_SOURCE_PATH -Value "SRV*$Directory"
+    if ($CurrentEnvironmentOnly)
+    {
+        $env:_NT_SOURCE_PATH = "SRV*" + $Directory
+    }
+    else
+    {
+        if (Test-Path -Path $devTenDebuggerRegKey)
+        {
+            Set-ItemProperty -Path $devTenDebuggerRegKey -Name $sourceServExtractTo -Value $Directory 
+        }
     
-    ""
-    "Please log out to activate the new source server settings"
-    ""        
+        if (Test-Path -Path $devElevenDebuggerRegKey)
+        {
+            Set-ItemProperty -Path $devElevenDebuggerRegKey -Name $sourceServExtractTo -Value $Directory 
+        }
+    
+        if (Test-Path -Path $devTwelveDebuggerRegKey)
+        {
+            Set-ItemProperty -Path $devTwelveDebuggerRegKey -Name $sourceServExtractTo -Value $Directory 
+        }
+
+        # Always set the _NT_SOURCE_PATH value for WinDBG.
+        Set-ItemProperty -Path HKCU:\Environment -Name _NT_SOURCE_PATH -Value "SRV*$Directory"
+    }
+        
 }
 
-Export-ModuleMember Set-SourceServer
+Export-ModuleMember -Function Set-SourceServer
 ###############################################################################
 
 function Get-SymbolServer
@@ -239,7 +249,7 @@ https://github.com/Wintellect/WintellectPowerShell
     GetCommonSettings SymbolCacheDir _NT_SYMBOL_PATH
 }
 
-Export-ModuleMember Get-SymbolServer
+Export-ModuleMember -Function Get-SymbolServer
 ###############################################################################
 
 function Get-SourceServerFiles
@@ -282,22 +292,22 @@ https://github.com/Wintellect/WintellectPowerShell
     if ($SrcTool -eq "")
     {
         # Go with the default of looking up WinDBG in the path.
-        $windbg = Get-Command windbg.exe -ErrorAction SilentlyContinue
+        $windbg = Get-Command -Name windbg.exe -ErrorAction SilentlyContinue
         if ($windbg -eq $null)
         {
             throw "Please use the -SrcTool parameter or have WinDBG in the path"
         }
         
-        $windbgPath = Split-Path ($windbg.Definition)
+        $windbgPath = Split-Path -Path ($windbg.Definition)
         $SrcTool = $windbgPath + "\SRCSRV\SRCTOOL.EXE"
     }
     
-    if ((Get-Command $SrcTool -ErrorAction SilentlyContinue) -eq $null)
+    if ((Get-Command -Name $SrcTool -ErrorAction SilentlyContinue) -eq $null)
     {
         throw "SRCTOOL.EXE does not exist."
     }
     
-    if ((Test-Path $CacheDirectory) -eq $false)
+    if ((Test-Path -Path $CacheDirectory) -eq $false)
     {
         throw "The specified cache directory does not exist."
     }
@@ -310,7 +320,7 @@ https://github.com/Wintellect/WintellectPowerShell
 
 }
 
-Export-ModuleMember Get-SourceServerFiles
+Export-ModuleMember -Function Get-SourceServerFiles
 ###############################################################################
 
 function Set-SymbolServer
@@ -322,7 +332,8 @@ Sets up a computer to use a symbol server.
 DESCRIPTION
 Sets up both the _NT_SYMBOL_PATH environment variable as well as VS 2010, VS 2012, 
 and VS 2013 (if installed) to use a common symbol cache directory as well as common 
-symbol servers.
+symbol servers. Optionally can be used to only set _NT_SYMBOL_PATH for an individual
+PowerShell window.
 
 .PARAMETER Internal
 Sets the symbol server to use to http://SymWeb. Visual Studio will not use the 
@@ -344,6 +355,12 @@ additional symbol servers will appear before HTTP://SYMWEB. If -Public is set,
 these symbol servers will appear before the public symbol servers so both the 
 environment variable and Visual Studio have the same search order.
 
+.PARAMETER CurrentEnvironmentOnly
+If specified will only set the current PowerShell window _NT_SYMBOL_PATH 
+environment variable and not overwrite the global settings. This is primarily
+for use with WinDBG as Visual Studio requires registry settings for the
+cache directory.
+
 .LINK
 http://www.wintellect.com/blogs/jrobbins
 https://github.com/Wintellect/WintellectPowerShell
@@ -352,7 +369,8 @@ https://github.com/Wintellect/WintellectPowerShell
     param ( [switch]   $Internal ,
     		[switch]   $Public ,
     		[string]   $CacheDirectory ,
-    		[string[]] $SymbolServers = @()  )
+    		[string[]] $SymbolServers = @(),
+            [switch]   $CurrentEnvironmentOnly)
             
     # Do the parameter checking.
     if ( $Internal -eq $Public )
@@ -360,8 +378,8 @@ https://github.com/Wintellect/WintellectPowerShell
         throw "You must specify either -Internal or -Public"
     }
 
-    # Check if VS is running. 
-    if (Get-Process 'devenv' -ErrorAction SilentlyContinue)
+    # Check if VS is running if we are going to be setting the global stuff. 
+    if (($CurrentEnvironmentOnly -eq $false) -and (Get-Process -Name 'devenv' -ErrorAction SilentlyContinue))
     {
         throw "Visual Studio is running. Please close all instances before running this script"
     }
@@ -384,24 +402,32 @@ https://github.com/Wintellect/WintellectPowerShell
         
         $symPath += "SRV*$CacheDirectory*http://SYMWEB"
 
-        Set-ItemPropertyScript HKCU:\Environment _NT_SYMBOL_PATH $symPath
-
-        if (Test-Path $devTenDebuggerRegKey)
+        if ($CurrentEnvironmentOnly)
         {
-        
-            SetInternalSymbolServer $devTenDebuggerRegKey $CacheDirectory $symPath
+            CreateDirectoryIfNeeded -directory $CacheDirectory
+            $env:_NT_SYMBOL_PATH = $symPath
         }
-
-        if (Test-Path $devElevenDebuggerRegKey)
+        else
         {
-        
-            SetInternalSymbolServer $devElevenDebuggerRegKey $CacheDirectory $symPath
-        }
+            Set-ItemPropertyScript HKCU:\Environment _NT_SYMBOL_PATH $symPath
 
-        if (Test-Path $devTwelveDebuggerRegKey)
-        {
+            if (Test-Path -Path $devTenDebuggerRegKey)
+            {
         
-            SetInternalSymbolServer $devTwelveDebuggerRegKey $CacheDirectory $symPath
+                SetInternalSymbolServer $devTenDebuggerRegKey $CacheDirectory $symPath
+            }
+
+            if (Test-Path -Path $devElevenDebuggerRegKey)
+            {
+        
+                SetInternalSymbolServer $devElevenDebuggerRegKey $CacheDirectory $symPath
+            }
+
+            if (Test-Path -Path $devTwelveDebuggerRegKey)
+            {
+        
+                SetInternalSymbolServer $devTwelveDebuggerRegKey $CacheDirectory $symPath
+            }
         }
     }
     else
@@ -429,36 +455,49 @@ https://github.com/Wintellect/WintellectPowerShell
 
         $envPath = "$extraPaths" + "SRV*$refSrcPath;SRV*$msdlPath"
     
-        Set-ItemPropertyScript HKCU:\Environment _NT_SYMBOL_PATH $envPath
+        if ($CurrentEnvironmentOnly)
+        {
+            CreateDirectoryIfNeeded -directory $CacheDirectory
+            $env:_NT_SYMBOL_PATH = $envPath
+        }
+        else
+        {
+            Set-ItemPropertyScript HKCU:\Environment _NT_SYMBOL_PATH $envPath
     
-        if (Test-Path $devTenDebuggerRegKey)
-        {
-            SetPublicSymbolServer $devTenDebuggerRegKey $CacheDirectory
-        }
+            if (Test-Path -Path $devTenDebuggerRegKey)
+            {
+                SetPublicSymbolServer $devTenDebuggerRegKey $CacheDirectory
+            }
         
-        if (Test-Path $devElevenDebuggerRegKey)
-        {
-            SetPublicSymbolServer $devElevenDebuggerRegKey $CacheDirectory
-        }
+            if (Test-Path -Path $devElevenDebuggerRegKey)
+            {
+                SetPublicSymbolServer $devElevenDebuggerRegKey $CacheDirectory
+            }
 
-        if (Test-Path $devTwelveDebuggerRegKey)
-        {
-            SetPublicSymbolServer $devTwelveDebuggerRegKey $CacheDirectory
+            if (Test-Path -Path $devTwelveDebuggerRegKey)
+            {
+                SetPublicSymbolServer $devTwelveDebuggerRegKey $CacheDirectory
+            }
         }
     }
-    
-    ""
-    "Please log out to activate the new symbol server settings"
-    ""                
+
+    if ($CurrentEnvironmentOnly)
+    {
+        Write-Host -Object "`nThe _NT_SYMBOL_PATH environment variable was updated for this window only`n"
+    }
+    else
+    {
+        Write-Host -Object "`nPlease log out to activate the new symbol server settings`n"
+    }
 }
 
-Export-ModuleMember Set-SymbolServer
+Export-ModuleMember -Function Set-SymbolServer
 ###############################################################################
 # SIG # Begin signature block
 # MIIYSwYJKoZIhvcNAQcCoIIYPDCCGDgCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUvDt5CPPusLK1kKN3Dm24imDv
-# Z6OgghM8MIIEhDCCA2ygAwIBAgIQQhrylAmEGR9SCkvGJCanSzANBgkqhkiG9w0B
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUbtfN3hRWEh+i6hXR7dK7n5Oh
+# epKgghM8MIIEhDCCA2ygAwIBAgIQQhrylAmEGR9SCkvGJCanSzANBgkqhkiG9w0B
 # AQUFADBvMQswCQYDVQQGEwJTRTEUMBIGA1UEChMLQWRkVHJ1c3QgQUIxJjAkBgNV
 # BAsTHUFkZFRydXN0IEV4dGVybmFsIFRUUCBOZXR3b3JrMSIwIAYDVQQDExlBZGRU
 # cnVzdCBFeHRlcm5hbCBDQSBSb290MB4XDTA1MDYwNzA4MDkxMFoXDTIwMDUzMDEw
@@ -566,23 +605,23 @@ Export-ModuleMember Set-SymbolServer
 # VQQDExhDT01PRE8gQ29kZSBTaWduaW5nIENBIDICEHF/qKkhW4DS4HFGfg8Z8PIw
 # CQYFKw4DAhoFAKB4MBgGCisGAQQBgjcCAQwxCjAIoAKAAKECgAAwGQYJKoZIhvcN
 # AQkDMQwGCisGAQQBgjcCAQQwHAYKKwYBBAGCNwIBCzEOMAwGCisGAQQBgjcCARUw
-# IwYJKoZIhvcNAQkEMRYEFPxe6HklLgCEPUS1JGgeotkyKjKxMA0GCSqGSIb3DQEB
-# AQUABIIBAMDRrj5FgHsJvsSAlbtARt2uYAnA06gnQ4tIGgAaffyoBk4uILcxV9+G
-# F2u9Sc01gX9FBpRwUjH1lBjOOaEIbO0e67YylIPJBy0YT5KZpPj8HBUKq/pDPq2u
-# OMlZvMy8OHoO5WNTyo/mCtJ7/lH0lvZhm3aM0SSd2TihckolFOt/gTzwIWbV7V+3
-# RblDxJxerClvQcsGBYnSrnrpbVgfZPUQEUl7IZQR0rW9i5RMFHVAaKckqVbJ3Q6W
-# CJwcz3jgExKbukGjapA7sqv1YXBar5zMe8fCirslzewyuR1swbQ0RoChytY36uub
-# aBF1gIHLhjpoY9AZjgNDCEdpyRxDZsGhggJEMIICQAYJKoZIhvcNAQkGMYICMTCC
+# IwYJKoZIhvcNAQkEMRYEFMy1XzM6HI0y31Bsz4jzrGdbt4WZMA0GCSqGSIb3DQEB
+# AQUABIIBACR4xy2thQhDQFb9erJyziF5tv1Ke4gtftR3GCiqYoTCAAfI86ZX/gZK
+# s0GNUsP0oXSkBm8kAhzUcrcek2JefyjI7LfAbil10iPoNAyJNilB/V389FLuNzSC
+# Va3ST2w0OGLX7vUQhRjob+AM+/PJBVpG0vAMN5GNEtisIjP/TgXmX88jEWz/IQfi
+# UtMxOVg2i4M35Oz+D4DZg0NNepgcm4a42cqzttpzv/MG2NS1VqL2MiuPkDlgAxjp
+# ihoax0aRLPIXkZ591wyaWRfubAYPip5xMNM97+eONmWoaPD7C6w/vyMdlnfNkaFm
+# 1pbplwpZYAhUr6Voe6TBIAE6TYMu0XyhggJEMIICQAYJKoZIhvcNAQkGMYICMTCC
 # Ai0CAQAwgaowgZUxCzAJBgNVBAYTAlVTMQswCQYDVQQIEwJVVDEXMBUGA1UEBxMO
 # U2FsdCBMYWtlIENpdHkxHjAcBgNVBAoTFVRoZSBVU0VSVFJVU1QgTmV0d29yazEh
 # MB8GA1UECxMYaHR0cDovL3d3dy51c2VydHJ1c3QuY29tMR0wGwYDVQQDExRVVE4t
 # VVNFUkZpcnN0LU9iamVjdAIQR4qO+1nh2D8M4ULSoocHvjAJBgUrDgMCGgUAoF0w
-# GAYJKoZIhvcNAQkDMQsGCSqGSIb3DQEHATAcBgkqhkiG9w0BCQUxDxcNMTMxMTA4
-# MjIxMTA1WjAjBgkqhkiG9w0BCQQxFgQUKABB2jKm2PVI5rwfAM3zuxch9p0wDQYJ
-# KoZIhvcNAQEBBQAEggEAOrq1nkwLRrQ1anhLYYwfY5l1fXWXuXsHJ8FPgCZ+wxSW
-# J0zksTrmAod4suTvyUzLrTEh7S20azet3KrcBOrxgGKQ1iBFBwLJz3GqGQ0c6XW2
-# i0+v1Ayyka9dKv1Ti3AFHjUG+lqUnoh3AESblwhhbY2PPUrH8ZAeTSo6dR7IsEXs
-# U4VLtXnIBibsgi81cjjRiRhLQPdmDJWKuUQtoCKHIANigAZ74ifKOClpnGqePu7C
-# WklJfEtaHvAHczbRbhwqN+j2EI0IzeYLmH/C1ivlhoiC9M3b6qlwMIOu8IamVilX
-# EeShA3inzF5xfBvZC/u/tEzSGTho7gVefLod0CKbRQ==
+# GAYJKoZIhvcNAQkDMQsGCSqGSIb3DQEHATAcBgkqhkiG9w0BCQUxDxcNMTQwNjE0
+# MDUyNTI1WjAjBgkqhkiG9w0BCQQxFgQUJPnaV+62Uy68k4sOZpwl3MvbQ4MwDQYJ
+# KoZIhvcNAQEBBQAEggEAeRKufqo1Goi7EfNHsxOvLdRtQKIkfhz8ACOT4N6IQOKv
+# XJLWbBz9bxdL6ywbeqPd5Othh7rYbOdJOu2i42HTdXHYD2eIFZlI/bgwdaeQgoDz
+# uD9hoe5ZxVExPsnQBcjVbgmIKcF1OAmnC4EtLp4joZcAzm6EcO82+a0ugU9TEqU/
+# 6dBRL9lITe6YzDzpn0tNkBsI5SLASdqUsSkAP6MkjBj2lpMGXjp3C7hXCumW3VAi
+# WZSEtlDP/98ExTZLkQpxuJYR5W3ghKwyrM1ET4HPbA5UWEAUYjR+6tBxCriuwqvr
+# Z2VnSdt+lzV2n6rRdL+fApJOPtXfUp+CLF02QFqeHQ==
 # SIG # End signature block
