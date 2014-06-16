@@ -37,7 +37,7 @@ $script:DefaultDotNetConfigProperties = @{
             param($config)
 
             # Go find the main property group to get the name of the assembly.
-            $assemblyName = $config.ParentNode.GetElementsByTagName("AssemblyName")
+            $assemblyName = $config.ParentNode.GetElementsByTagName("AssemblyName")[0].InnerText
 
             # Set the output name to be the path. This works in both C# and VB.
             $valueName = Join-Path -Path $config.OutputPath -ChildPath "$assemblyName.XML"
