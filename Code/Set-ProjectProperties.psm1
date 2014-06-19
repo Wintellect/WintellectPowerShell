@@ -1,7 +1,7 @@
 #requires -version 2.0
 ###############################################################################
 # WintellectPowerShell Module
-# Copyright (c) 2010-2013 - John Robbins/Wintellect
+# Copyright (c) 2010-2014 - John Robbins/Wintellect
 # 
 # Do whatever you want with this module, but please do give credit.
 ###############################################################################
@@ -197,12 +197,12 @@ http://code.wintellect.com
 #>
     begin
     {
-        function ReplaceNode(         $document,
-                                    $topElement,
+        function ReplaceNode(        $document,
+                                     $topElement,
                             [string] $elementName,
                             [string] $elementValue )
         {
-            Write-Debug "Replacing $elementName=$elementValue"
+            Write-Debug -Message "Replacing $elementName=$elementValue"
 
             $origNode = $topElement[$elementName]
             if ($origNode -eq $null)
@@ -219,18 +219,18 @@ http://code.wintellect.com
         }
 
         function ReplaceRelativePathNode([string] $fileLocation,
-                                                $document,
-                                                $topElement,
-                                        [string] $elementName,
-                                        [String] $fullUseFilePath)
+                                                  $document,
+                                                  $topElement,
+                                        [string]  $elementName,
+                                        [String]  $fullUseFilePath)
         {
             try
             {
-                Push-Location (Split-Path $fileLocation)
+                Push-Location -Path (Split-Path -Path $fileLocation)
 
-                $relLocation = Resolve-Path $fullUseFilePath -Relative
+                $relLocation = Resolve-Path -Path $fullUseFilePath -Relative
 
-                Write-Debug "Setting relative path $elementName=$relLocation"
+                Write-Debug -Message "Setting relative path $elementName=$relLocation"
 
                 ReplaceNode -document $document `
                             -topElement $topElement `
@@ -263,7 +263,7 @@ http://code.wintellect.com
                     "AssemblyOriginatorKeyFile" 
                     {
                         # Get the full path to the .SNK file specified.
-                        $snkFile = Resolve-Path $item.Value -ErrorAction SilentlyContinue
+                        $snkFile = Resolve-Path -Path $item.Value -ErrorAction SilentlyContinue
 
                         if ($snkFile -eq $null)
                         {
@@ -327,7 +327,7 @@ http://code.wintellect.com
                     else
                     {
                         # Get the full path to the .RuleSet file specified.
-                        $ruleFile = Resolve-Path $item.Value -ErrorAction SilentlyContinue
+                        $ruleFile = Resolve-Path -Path $item.Value -ErrorAction SilentlyContinue
 
                         if ($ruleFile -eq $null)
                         {
@@ -368,7 +368,7 @@ http://code.wintellect.com
         {
 
             # Try and read the file as XML. Let the errors go if it's not.
-            [xml]$fileXML = Get-Content $file 
+            [xml]$fileXML = Get-Content -Path $file
 
 
             # Build up the property hash values.
@@ -418,7 +418,7 @@ http://code.wintellect.com
         function ProcessProjectFile([string] $file)
         {
             # Is the file read only?
-            if ((Get-ChildItem $file).IsReadOnly)
+            if ((Get-ChildItem -Path $file).IsReadOnly)
             {
                 throw "$file is readonly so it cannot be changed"
             }
@@ -456,7 +456,7 @@ http://code.wintellect.com
             foreach ($path in $paths)
             {
                 # There might be a wildcard here so resolve it to an array.
-                $resolvedPaths = Resolve-Path $path
+                $resolvedPaths = Resolve-Path -Path $path
                 foreach ($file in $resolvedPaths)
                 {
                     ProcessProjectFile $file
@@ -469,8 +469,8 @@ http://code.wintellect.com
 # SIG # Begin signature block
 # MIIYSwYJKoZIhvcNAQcCoIIYPDCCGDgCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUhrLp+7TJALW32T3vZtrgRGU2
-# zhygghM8MIIEhDCCA2ygAwIBAgIQQhrylAmEGR9SCkvGJCanSzANBgkqhkiG9w0B
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUaFgEW4hhdahXYCF1otpVnoQ3
+# 4l6gghM8MIIEhDCCA2ygAwIBAgIQQhrylAmEGR9SCkvGJCanSzANBgkqhkiG9w0B
 # AQUFADBvMQswCQYDVQQGEwJTRTEUMBIGA1UEChMLQWRkVHJ1c3QgQUIxJjAkBgNV
 # BAsTHUFkZFRydXN0IEV4dGVybmFsIFRUUCBOZXR3b3JrMSIwIAYDVQQDExlBZGRU
 # cnVzdCBFeHRlcm5hbCBDQSBSb290MB4XDTA1MDYwNzA4MDkxMFoXDTIwMDUzMDEw
@@ -578,23 +578,23 @@ http://code.wintellect.com
 # VQQDExhDT01PRE8gQ29kZSBTaWduaW5nIENBIDICEHF/qKkhW4DS4HFGfg8Z8PIw
 # CQYFKw4DAhoFAKB4MBgGCisGAQQBgjcCAQwxCjAIoAKAAKECgAAwGQYJKoZIhvcN
 # AQkDMQwGCisGAQQBgjcCAQQwHAYKKwYBBAGCNwIBCzEOMAwGCisGAQQBgjcCARUw
-# IwYJKoZIhvcNAQkEMRYEFNlP5WItg8XOO5XvIu7WkYx264M1MA0GCSqGSIb3DQEB
-# AQUABIIBAEIvNb08yxDXJ7Ty8d0OwW2JSrnMZ8Y7G8fuEkBYZBXYc98Twu7nCaOY
-# phDOfnF3PmxRolkMiSsCK51A2sXxf77aRUmLIoOKDCUzy3gtkfV0CPQ8dUcKt6B+
-# UilNXGyZiKhlJRz9KG5uVdruocbpDJ11OOaimlldtpx3/jG+mpncarbkNqAV3ETm
-# 7UoT06Dj+5B8d7QomRgUrGO/Pjr9im6ck5Fb7y+K0ygZi/LirQYyy0XxnmSLBx4B
-# k4P/t29CRGTvVzVfjkDxmdQt0QrpWMv0Vo0nljeMvBTdSYQNKp6cyNKAuG/Ix5Up
-# KOvHlk1h0PuXhaUA0Lh65+Df/F0jn6OhggJEMIICQAYJKoZIhvcNAQkGMYICMTCC
+# IwYJKoZIhvcNAQkEMRYEFDl6fiFrB3mePMhjKgcOlOgYQfNGMA0GCSqGSIb3DQEB
+# AQUABIIBAI+W9AUdefLX7i/3IlqIDa7dxYod/jDs8d8Sf9ekpA1iLa+IT5EYLo/i
+# TVFUmocEGBLSjBosgImxFPo8mSBrJxh6AjikDhRKf+pw7jZvSQgmfl1Fv64FITXX
+# wulmSp3oRRvablPje0sRAycvmaZhf2pzWsDOFMMnEk0UNk43/2ob2BeJVh+Oxcf8
+# /WyrH9rX+qfbYnVgeBFH8Lesqu+p4qf+Xx/aMiUPPJgxTqIarMmIu54Q9vNR1sdG
+# Xwm4pxseLdLvnNS26riotjnjrPjeEZWctgpt20+6s/IN3NPOaMR8FXFHzzFccbg8
+# eghp4ki14PMnj1FRCHfCTnXbrwdYg+ChggJEMIICQAYJKoZIhvcNAQkGMYICMTCC
 # Ai0CAQAwgaowgZUxCzAJBgNVBAYTAlVTMQswCQYDVQQIEwJVVDEXMBUGA1UEBxMO
 # U2FsdCBMYWtlIENpdHkxHjAcBgNVBAoTFVRoZSBVU0VSVFJVU1QgTmV0d29yazEh
 # MB8GA1UECxMYaHR0cDovL3d3dy51c2VydHJ1c3QuY29tMR0wGwYDVQQDExRVVE4t
 # VVNFUkZpcnN0LU9iamVjdAIQR4qO+1nh2D8M4ULSoocHvjAJBgUrDgMCGgUAoF0w
-# GAYJKoZIhvcNAQkDMQsGCSqGSIb3DQEHATAcBgkqhkiG9w0BCQUxDxcNMTMxMTA4
-# MjIxMTA1WjAjBgkqhkiG9w0BCQQxFgQUDdxreZd56ecw0pvRN6Uh+edo+4wwDQYJ
-# KoZIhvcNAQEBBQAEggEAs7wQ7zPBqqsM9IEU8U3kQuLVU4GzSMOWUusoAWd0dVoP
-# ndRA6f2AuZR8LcPE+3+MBLCK9siMCMlQqpM9gXzac7u5l9JanoGkdm0BP+BotB9f
-# +ZQm8p5FT2QlMUyDwJrSyiEioVPNR7Ga9+64V/GpaAqUL0h82oiw1/b6Bcn/1pTZ
-# 5ChxFDpvy2xKW+IVYZCj90zSgtKfOp0oUaye1hK9xKOPR49Rxionl6HOiNMRBdhZ
-# BFXQFXEFhq5zEGk7NzIRe8jMxH3oTnrYUnfXYmdW80WzSSNmVDIXhnxXzQZNsirb
-# RKbaIZxENlvdXqEL3sZaXjfHCrhn9XPalr6JYs3LVw==
+# GAYJKoZIhvcNAQkDMQsGCSqGSIb3DQEHATAcBgkqhkiG9w0BCQUxDxcNMTQwNjE5
+# MDUxMjMzWjAjBgkqhkiG9w0BCQQxFgQUwWF+7LRrAEhiK48KHGC9WbnshPEwDQYJ
+# KoZIhvcNAQEBBQAEggEAolfC/6P3aqn9pVq5nZa1v77XMc9fpJv4QgMPTvBOONG8
+# 0HNRBJuLmH7yqXkSaIWVDwfr1ifiIPecGeRdJUp54ZjynRr6x3HUaOxnE3UQYo9L
+# 4Nw+ttszcXOzqLkmUlCbZXXRki/mEo2XEjFJJ6paoYNRZp8J6UqL/vK5Ej1eiRBu
+# iQsovZqxN9ThxoHgPDsKX4jLiTLOkD5eW3HYIePF5bQB0LMHfRRCaOutGTGGihvC
+# FTRrbGRxdLj26El4uU17YjFbHheEnsjvI+jGbZynnxr9qxMMY52c3gMzNFqzy3Az
+# ZK8ipTN5bBJBnYKknV3stZeEGLXg/xYO/GSs9dmIQg==
 # SIG # End signature block

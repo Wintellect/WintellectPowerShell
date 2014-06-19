@@ -1,5 +1,10 @@
 # Wintellect PowerShell Change Log #
 
+## June 18, 2014
+Fixed an issue reported by [Chris Fraire/idodeclare](https://github.com/idodeclare) is Set-ProjectProperties where the assembly name for XML document comments was not set correctly in all cases.
+
+Ensured Set-ProjectProperties.ps1 is clean as reported by Microsoft's Script Analyzer plug in.
+
 ## June 13, 2014
 Fixed an issue with relative paths in Expand-ZipFile
 
