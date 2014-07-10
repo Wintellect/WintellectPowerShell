@@ -121,17 +121,22 @@ https://github.com/Wintellect/WintellectPowerShell
         if ($vsVersion -ne $null)
         {
             # If using the public symbol servers I have to put PublicSymbols on the path.
-            if ((Get-ItemProperty "HKCU:\Software\Microsoft\VisualStudio\$vsVersion\Debugger").SymbolUseMSSymbolServers -eq 1)
+            if ((Get-ItemProperty -Path "HKCU:\Software\Microsoft\VisualStudio\$vsVersion\Debugger").SymbolUseMSSymbolServers -eq 1)
             {
-                $SymPath = Join-Path $symPath "PublicSymbols"
+                $SymPath = Join-Path -Path $symPath -ChildPath "PublicSymbols"
             }
+        }
+
+        if ($symPath.Length -eq 0)
+        {
+            throw "The symbol path is empty"
         }
 
         $CacheDirectory = $symPath
     }
     else
     {
-        if (-not (Test-Path $CacheDirectory))
+        if (-not (Test-Path -Path $CacheDirectory))
         {
             New-Item -Path $CacheDirectory -Type Directory | Out-Null
         }
@@ -148,7 +153,7 @@ https://github.com/Wintellect/WintellectPowerShell
     {
         # Build up the command line to call NGEN.EXE on this binary.
         # Get the name of the DLL.
-        $baseName = (Split-Path $f -Leaf)
+        $baseName = (Split-Path -Path $f -Leaf)
         $baseName = $baseName.SubString(0, $baseName.Length - $niLength)
 
         # Extract out the bit version of this compiled binary so I know if I'm supposed
@@ -171,9 +176,9 @@ https://github.com/Wintellect/WintellectPowerShell
         if ($DoAllGACFiles.IsPresent -eq $false)
         {
             # Build up the framework path.
-            $fwPath = Join-Path $env:windir "Microsoft.NET"
-            $fwPath = Join-Path $fwPath ("Framework" + $bits)
-            $fwPath = Join-Path $fwPath $fwVersion
+            $fwPath = Join-Path -Path $env:windir -ChildPath "Microsoft.NET"
+            $fwPath = Join-Path -Path $fwPath -ChildPath ("Framework" + $bits)
+            $fwPath = Join-Path -Path $fwPath -ChildPath $fwVersion
 
             $fwFile = Get-ChildItem -Recurse -Path $fwPath -Filter ($baseName + ".dll")
             if ($fwFile -eq $null)
@@ -190,7 +195,7 @@ https://github.com/Wintellect/WintellectPowerShell
             {
                 $msgBitness = "(x64)"
             }
-            Write-Host "Generating PDB file for $msgBitness $baseName.dll"
+            Write-Host -Object "Generating PDB file for $msgBitness $baseName.dll"
         }
         
         $ngenCmd = $env:windir + "\Microsoft.NET\Framework" + $bits + "\" + $fwVersion + "\NGEN.EXE" + ' createPDB ' + '"' + $f.FullName + '"' + ' "' + $CacheDirectory +'"'
@@ -200,17 +205,17 @@ https://github.com/Wintellect/WintellectPowerShell
         if ($LASTEXITCODE -ne 0)
         {
             # This may look odd, but it's because Write-Warning is too dumb to write arrays.
-            Write-Warning ([String]::Join("`n", $outputData))
+            Write-Warning -Object ([String]::Join("`n", $outputData))
         }
     }
 }
 
-Get-Help -Full Add-NgenPdbs
+
 # SIG # Begin signature block
 # MIIYSwYJKoZIhvcNAQcCoIIYPDCCGDgCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUcSkaiBdlzoPCW6DPFQN2ywWP
-# hWagghM8MIIEhDCCA2ygAwIBAgIQQhrylAmEGR9SCkvGJCanSzANBgkqhkiG9w0B
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUM0zTGE40n2XUE8P+h/FN39sC
+# iZOgghM8MIIEhDCCA2ygAwIBAgIQQhrylAmEGR9SCkvGJCanSzANBgkqhkiG9w0B
 # AQUFADBvMQswCQYDVQQGEwJTRTEUMBIGA1UEChMLQWRkVHJ1c3QgQUIxJjAkBgNV
 # BAsTHUFkZFRydXN0IEV4dGVybmFsIFRUUCBOZXR3b3JrMSIwIAYDVQQDExlBZGRU
 # cnVzdCBFeHRlcm5hbCBDQSBSb290MB4XDTA1MDYwNzA4MDkxMFoXDTIwMDUzMDEw
@@ -318,23 +323,23 @@ Get-Help -Full Add-NgenPdbs
 # VQQDExhDT01PRE8gQ29kZSBTaWduaW5nIENBIDICEHF/qKkhW4DS4HFGfg8Z8PIw
 # CQYFKw4DAhoFAKB4MBgGCisGAQQBgjcCAQwxCjAIoAKAAKECgAAwGQYJKoZIhvcN
 # AQkDMQwGCisGAQQBgjcCAQQwHAYKKwYBBAGCNwIBCzEOMAwGCisGAQQBgjcCARUw
-# IwYJKoZIhvcNAQkEMRYEFNL25FWLD1yOqInEO3lSLEElg4+NMA0GCSqGSIb3DQEB
-# AQUABIIBAEipc8p8LGpdEo19JuMTbFyLjJPtwBIr6B0vKG2CHcQSFsZfJYukMPtY
-# Ktvx3je+pjQlIDwwJVGmZwZfqFzb7x6FtIpg5AhnUlwtnX3XIPI4GHViU0Wd3G3M
-# dS8pIIeYR7SV07x6sI9baLK9Ty2N5BRI3VrE4XOYNXzrOonbTkjQP3IHq9ZJfpDD
-# kORp4sYltNI0PnmTa7oNLfQlu0OKEDbbTCF1AL655bxku1C6IobCkuL4J7fku7qJ
-# p3zOH0Jhhe99ACbo5iop90YN7XP8Doydl2YHCbCUXqxb0MywAb3YtkfLaFBJVMd9
-# FzN0YxwoAQ/6fjPsT4vlgz9FfsbJOsahggJEMIICQAYJKoZIhvcNAQkGMYICMTCC
+# IwYJKoZIhvcNAQkEMRYEFDISa2wWM0d0aO9Qs8EKKtvjb0c5MA0GCSqGSIb3DQEB
+# AQUABIIBAEIhrIut4sBmPYdM1E+MCqzsZVz1ZEJ3EGSuki15bVXKNrJKJTJS6OwO
+# w0w2A0eAoJcnJBjmmrqy95cumBF3PybvULPnL5OPCtBkKz3DAqI4j3uvcdILmq9W
+# WAvlA0jI2qlCQHC+WaWDwfcQ2JGACA7v165PSiFd+H90jQep8XBIvv3FGRPzxgc6
+# dsXg3/mll4xbkCtZElPdi/kCAotbu30hxrM/XnR6VVyphVj7ANJaQluaHFdfb/l5
+# xKAb54GNxEr7gR0hIj7RjzMeGT+hbxbCUWgW3IttIDK5n6aRHhhLUSpric2Bsh79
+# SRHpBBQF0GVnrCsEK0Gomy/0wWO6RhGhggJEMIICQAYJKoZIhvcNAQkGMYICMTCC
 # Ai0CAQAwgaowgZUxCzAJBgNVBAYTAlVTMQswCQYDVQQIEwJVVDEXMBUGA1UEBxMO
 # U2FsdCBMYWtlIENpdHkxHjAcBgNVBAoTFVRoZSBVU0VSVFJVU1QgTmV0d29yazEh
 # MB8GA1UECxMYaHR0cDovL3d3dy51c2VydHJ1c3QuY29tMR0wGwYDVQQDExRVVE4t
 # VVNFUkZpcnN0LU9iamVjdAIQR4qO+1nh2D8M4ULSoocHvjAJBgUrDgMCGgUAoF0w
-# GAYJKoZIhvcNAQkDMQsGCSqGSIb3DQEHATAcBgkqhkiG9w0BCQUxDxcNMTMxMTA4
-# MjIxMTAzWjAjBgkqhkiG9w0BCQQxFgQU4o0e6EdYC2otbuCcNZqgyj2jE0kwDQYJ
-# KoZIhvcNAQEBBQAEggEADr/Zr+7aRjoRsS6YvlStOPZ4HXHSTLib4GoDavzbb1Lw
-# zK4L4YlAGZZgQBn1O1vNKxjfl9bnYV3bLAgTKJzTLpyFzipwbENrA7g+pwf+QA1y
-# Tt2YQCV8Ve+ChS1aSxZGnlSgsDn7gDuUQArjqHSHSSRl2wQA2IXfTr5ORidygcFS
-# bflmsAMLRGrDxeKBQtwigeBEm8E/Rqcr3Mm4qmJmdlvRrBPMXcJTLU6JPqMHKENZ
-# jtnNHcLbRfEZ915Mr/g5Aqur80VskfAFCA6EJGUdnIOxFmV3Pav8osbPzoaqYowD
-# 5ytXNVaHTHwGxluVPJNuWjpSPS9NcgaJOqmjfMzP6Q==
+# GAYJKoZIhvcNAQkDMQsGCSqGSIb3DQEHATAcBgkqhkiG9w0BCQUxDxcNMTQwNzEw
+# MDU1MDU2WjAjBgkqhkiG9w0BCQQxFgQUuuFBw1HL3LrX6R1Y3j/5rNgqTkcwDQYJ
+# KoZIhvcNAQEBBQAEggEAHMH5p3M0k8zq7lZlJHSBs5NdV62KscDbjiSUoH5lq/0S
+# 79EkWyb9PpLAY1LcQ35KC5zNa7DcvztjJWnaZFRihLyFElr6zrV70IZ0cTgoJwpu
+# y4FW2Z0y5yj11QupbHYlnnt6G8FIu431RGNreMhv5qLZNDSLwjOYK7xncIN49UDp
+# LhXYSCxLnKMoA92YXED2lXBT+oJxr4X93DzNhjXlMo6T0de8J0hkfcp2bW18FxpR
+# NFsYKSZ4ywlFUPNpRk1L+vBiNGCOdO2ydqEn1mwfWERxhCN/inuotbGSA34ZEInZ
+# Odsj8Sp3+unmWLjmWVqsaiDnVwOj1UXzSdPsxv7NHA==
 # SIG # End signature block

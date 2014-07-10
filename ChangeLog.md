@@ -1,5 +1,8 @@
 # Wintellect PowerShell Change Log #
 
+## July 7, 2014
+Fixed an issue in Add-NgenPdbs where I wasn't handling the case where the VS cache directory could be blank.
+
 ## June 18, 2014
 Fixed an issue reported by [Chris Fraire/idodeclare](https://github.com/idodeclare) is Set-ProjectProperties where the assembly name for XML document comments was not set correctly in all cases.
 
