@@ -79,9 +79,6 @@ Here's the about text showing all cmdlets. Of course, all cmdlets have detailed 
 	                                   variables into PowerShell for command line
 	                                   usage.
 	
-	    Get-MyVariables                Makes it much easier to see just the variables
-	                                   you define in PowerShell.
-	
 	SEE ALSO
 	    Online help and updates: 
 	            http://www.wintellect.com/blogs/jrobbins
