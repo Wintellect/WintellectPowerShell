@@ -1,7 +1,7 @@
-﻿#requires -version 2.0
+#requires -version 3.0
 ###############################################################################
 # WintellectPowerShell Module
-# Copyright (c) 2013 - John Robbins/Wintellect
+# Copyright (c) 2010-2014 - John Robbins/Wintellect
 # 
 # Do whatever you want with this module, but please do give credit.
 ###############################################################################
@@ -10,95 +10,78 @@
 # followed.
 Set-StrictMode -version Latest
 
-function Invoke-CmdScript 
+###############################################################################
+# Public Cmdlets
+###############################################################################
+function Get-SysinternalsSuite
 {
 <#
 .SYNOPSIS
-Executes the specified command script and imports the environment into current
-PowerShell instance.
+Gets all the wonderful Sysinternals tools.
 
 .DESCRIPTION
-Running development tools at the command line in PowerShell can be a hassle since 
-they rely on environment varibles and those are set through batch files. This 
-cmdlet runs those batch files and imports any set environment variables into
-the running PowerShell instance. 
+Downloads and extracts the Sysinternal tools to the directory you specify.
 
-.PARAMETER script
-The required batch file to run.
+.PARAMETER ExtractTo
+The directory where you want to extract the Sysinternal tools.
 
-.PARAMETER parameters
-The optional parameters to pass to the batch file.
-
-.NOTES
-The original script is by Lee Holmes. I updated the script to make removing environment variables
-work.
+.PARAMETER Save
+The default is to download the SysinternalsSuite.zip file and remove it after 
+extracting the contents. If you want to keep the file, specify the save directory 
+with this parameter.
 
 .LINK
-http://www.leeholmes.com/blog/2006/05/11/nothing-solves-everything-%e2%80%93-powershell-and-other-technologies/
+http://www.wintellect.com/blogs/jrobbins
 https://github.com/Wintellect/WintellectPowerShell
+
 #>
-    param
-    (
+    param ( 
         [Parameter(Mandatory=$true,
-                   Position=0,
-                   HelpMessage="Please specify the command script to execute.")]
-        [string] $script, 
-        [Parameter(Position=1)]
-        [string] $parameters
-    )  
-
-    # Save off the current environment variables in case there's an issue
-    $oldVars = $(dir env:\)
-    $tempFile = [IO.Path]::GetTempFileName()  
+                   HelpMessage="Please specify the extract directory")]
+        [Alias("Extract")]
+        [string] $ExtractTo ,
+        [Parameter(HelpMessage="Please specify the directory to expand into")]
+        [string] $Save
+    ) 
     
-    try
-    {
-        ## Store the output of cmd.exe.  We also ask cmd.exe to output   
-        ## the environment table after the batch file completes  
-        cmd /c " `"$script`" $parameters && set > `"$tempFile`" "
+	New-Item -ItemType Directory -Path $ExtractTo -ErrorAction SilentlyContinue > $null
 
-        if ($LASTEXITCODE -ne 0)
-        {
-            throw "Error executing CMD.EXE: $LASTEXITCODE"
-        }
-        
-        # Before we delete the environment variables get the output into a string
-        # array.
-        $vars = Get-Content $tempFile
+    [Boolean]$deleteZipFile = $TRUE
+    [String]$downloadFile = ""
+    if ( $Save.Length -gt 0 )
+    { 
+        New-Item -ItemType Directory -Path $Save -ErrorAction SilentlyContinue > $null
+        $downloadFile = $Save
+        $deleteZipFile = $FALSE
+    }
+    else
+    { 
+        # Use the %TEMP% path for the user.
+        $downloadFile = $env:temp
+    }
     
-        # Clear out all current environment variables in PowerShell.
-        dir env:\ | Foreach-Object { 
-                        set-item -force -path "ENV:\$($_.Name)" -value "" 
-                    }
- 
+    # Build up the full location and filename.
+    $downloadFile = $(Get-item -Path $downloadFile).FullName
+    $downloadFile = Join-Path -path $downloadFile -childpath "SysinternalsSuite.zip" 
 
-        ## Go through the environment variables in the temp file.  
-        ## For each of them, set the variable in our local environment.  
-        $vars | Foreach-Object {   
-                            if($_ -match "^(.*?)=(.*)$")  
-                            { 
-                                Set-Content "env:\$($matches[1])" $matches[2]  
-                            } 
-                        }
-    }
-    catch
+    # Let the download begin!
+    Invoke-WebRequest -Uri "http://download.sysinternals.com/files/SysinternalsSuite.zip" -OutFile $downloadFile
+    Expand-ZipFile $downloadFile $ExtractTo
+    
+    # Strip off the NTFS stream marking the files as downloaded. We trust Mark. :)
+    Unblock-File -Path $ExtractTo
+    
+    if ($deleteZipFile -eq $true)
     {
-        "ERROR: $_"
-
-        # Any problems, restore the old environment variables.
-        $oldVars | ForEach-Object { Set-Item -Force -Path "ENV:\$($_.Name)" -value $_.Value }
-    }
-    finally
-    {
-        Remove-Item -Path $tempFile -Force -ErrorAction SilentlyContinue
+        Remove-Item -Path $downloadFile    
     }
 }
 
 # SIG # Begin signature block
 # MIIYSwYJKoZIhvcNAQcCoIIYPDCCGDgCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUol76t3TBzYa23uNRpvc0gwZb
-# lF6gghM8MIIEhDCCA2ygAwIBAgIQQhrylAmEGR9SCkvGJCanSzANBgkqhkiG9w0B
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUG9Xgoyv3md0+q8K9W5OyjsJc
+# Cw+gghM8MIIEhDCCA2ygAwIBAgIQQhrylAmEGR9SCkvGJCanSzANBgkqhkiG9w0B
 # AQUFADBvMQswCQYDVQQGEwJTRTEUMBIGA1UEChMLQWRkVHJ1c3QgQUIxJjAkBgNV
 # BAsTHUFkZFRydXN0IEV4dGVybmFsIFRUUCBOZXR3b3JrMSIwIAYDVQQDExlBZGRU
 # cnVzdCBFeHRlcm5hbCBDQSBSb290MB4XDTA1MDYwNzA4MDkxMFoXDTIwMDUzMDEw
@@ -206,23 +189,23 @@ https://github.com/Wintellect/WintellectPowerShell
 # VQQDExhDT01PRE8gQ29kZSBTaWduaW5nIENBIDICEHF/qKkhW4DS4HFGfg8Z8PIw
 # CQYFKw4DAhoFAKB4MBgGCisGAQQBgjcCAQwxCjAIoAKAAKECgAAwGQYJKoZIhvcN
 # AQkDMQwGCisGAQQBgjcCAQQwHAYKKwYBBAGCNwIBCzEOMAwGCisGAQQBgjcCARUw
-# IwYJKoZIhvcNAQkEMRYEFDJd2uRwlNhWdKjSqZgUAI4+/8qQMA0GCSqGSIb3DQEB
-# AQUABIIBACNvqFRP75hU4zv1BCp+mc/6ElYq8sTwBp8ZJBfhDEU8Y50AFWkfvij4
-# QSWq3+IFkY6f70hWaUUswVodIUcdGRpTErwZXDq98hfwhgvBUCKKKAqT+kf0b7w3
-# dq67IpjnVzu1jU9jBBMdwO+FWIrCMspBoCZVUXE1pbPcQj8v9qpBzXIdsFM2JxKX
-# ylZqlbOcE72bTt9FsWiI/Zvirn/hRPGLCmH0nHHoPRm7/1RuEXQF569UN0JFjpAh
-# qA0Ffq8uep9Qz40/pqPyt45FdvQs6xfNSuP39AF1fgy42yh7lIT9uZB34RGAW+/s
-# hcf5lOlCgn1smVjGWbfQIugu8OQO11uhggJEMIICQAYJKoZIhvcNAQkGMYICMTCC
+# IwYJKoZIhvcNAQkEMRYEFMBjmA8D59iSj0B1S3Q9t+rSkoqdMA0GCSqGSIb3DQEB
+# AQUABIIBAAk4annq6htHK/QGMfpeCkbxSgOPdAETonPVLwsd+UhatGIhHMD4CoYn
+# 4z8sDcO836Gyw9NsF3we8nLNMgK3lmmelfMt9t83ib6zYfLE/JIj++VIDj0Mnqg5
+# F9mT3rAojL3uBuUfwIuWOQ4kIlPTt1jonPocUs/vv+8wIjHiQ0rzUf87336PqGx+
+# PhZEuTRBBJ2wATGEzcK/DQ5UUvrs7nmzWBo/kPC0T4S6aRxvtwnqnvf4tGQ3Ltdb
+# NLT0Orcx0cq0TVStI3Rm8icMv1zC4bOJD1PB0gL7OAZOZ24e/UTfVv/a+NoYk9lU
+# AoTsoUYK0UcLC+DSzbCM55+iVTCSL6ihggJEMIICQAYJKoZIhvcNAQkGMYICMTCC
 # Ai0CAQAwgaowgZUxCzAJBgNVBAYTAlVTMQswCQYDVQQIEwJVVDEXMBUGA1UEBxMO
 # U2FsdCBMYWtlIENpdHkxHjAcBgNVBAoTFVRoZSBVU0VSVFJVU1QgTmV0d29yazEh
 # MB8GA1UECxMYaHR0cDovL3d3dy51c2VydHJ1c3QuY29tMR0wGwYDVQQDExRVVE4t
 # VVNFUkZpcnN0LU9iamVjdAIQR4qO+1nh2D8M4ULSoocHvjAJBgUrDgMCGgUAoF0w
 # GAYJKoZIhvcNAQkDMQsGCSqGSIb3DQEHATAcBgkqhkiG9w0BCQUxDxcNMTMxMTA4
-# MjIxMTA0WjAjBgkqhkiG9w0BCQQxFgQUs50mlfeR/LTQ5Y7yXFF9QzpPmUMwDQYJ
-# KoZIhvcNAQEBBQAEggEAZzUph40WhzHqS3j8CN9kvhpcie371ctGxOPfYi/VIRjR
-# BGAjhH3ay4jjqNH8ABCYGuD00op2QkDyrSDs7mvWOE1sT0CW/KfDgZMQTmJZTqt1
-# /7unVH3cFfT95tI3ZIVwOuXp3sw5mPzUVRsCArwmWdJwSKcXbiGUZY8DRWsdFyAN
-# WbhMztqdare+i5yxe557Gglf+tATMqYOb5oXe4C8Zgcyccq+WQicf/4ea9rEAvJ3
-# ZpwCsPnEi1dWS++XXuTZyOeUcTfo1fYPl3i1zS1xFSr+jLlEbE1lohowoNVB/USk
-# hheWViDp6WOAAo0LCdP/XO55QqAAEqC7uky+porHqw==
+# MjIxMTA0WjAjBgkqhkiG9w0BCQQxFgQUWnDdUBAUrUmQsc/cMvwdEKtpdtcwDQYJ
+# KoZIhvcNAQEBBQAEggEACP3oQcYAGR7jJvAf6XFDYFpsKQ7hTXsunMM2hOBR0iRD
+# 1TlbAcoK4gQswY80nK6wjXjU1i2cKmpKdvQDLn/JWsv87aHkmM7Up7+LUy2+dZvV
+# vPxf+9edWpnQHMykzMEGttZ+zv8zaSp3O0UBWRxmZghyKT9Xw1NLMEQMd3qA5C+2
+# DKDtX0lkYYqvCar574QthwMgve+c07Cx0tLf/KQHv9JmCdkWSDV2kr+MhURMMLW8
+# 4CLjx9iKag4EGWgRg1J+v7BGQBIodvNLPP1b5wfsPaSPfWDBF7IHGrI2LN3TWW3F
+# UqQCghx8wHnKyA+9kauBClylIvj0uBtJQiXFa5q3Nw==
 # SIG # End signature block

@@ -1,7 +1,7 @@
-#requires -version 2.0
+﻿#requires -version 2.0
 ###############################################################################
 # WintellectPowerShell Module
-# Copyright (c) 2010-2013 - John Robbins/Wintellect
+# Copyright (c) 2013 - John Robbins/Wintellect
 # 
 # Do whatever you want with this module, but please do give credit.
 ###############################################################################
@@ -13,195 +13,212 @@ Set-StrictMode -version Latest
 ###############################################################################
 # Public Cmdlets
 ###############################################################################
-
-function Compare-Directories
+function Add-NgenPdbs
 {
 <#
 .SYNOPSIS
-Compare two directories to see if they are identical
+Create PDB files for NGEN'd images on a machine.
 
 .DESCRIPTION
-This cmdlet will compare two directories and report if the files are identical 
-by name, and optionally on content.
-    
-Symbol explanation:
-=> - The file is in the -NewDir directory, not the -OriginalDir.
-<= - The file is in the -OriginalDir directory and not the -NewDir.
-!= - The file is in both directories, but the content is not identical.
-    
-If the directories are identical an empty hash table is returned.
-    
-Since sometimes filenames are long, you can pipe this output of this cmdlet 
-into Format-Table -AutoSize to avoid truncating the filenames.
+When running the Visual Studio profiler on Windows 8 or Windows Server 2012, 
+you need the PDB files for any binaries that have been NGEN'd and put in the GAC 
+so you can see the calls into those binaries. Fortunately NGEN.EXE can generate 
+the PDB files after the fact and this script automates the process for so you
+don't have to run NGEN on each binary.
 
-.PARAMETER OriginalDir
-The original directory to use for the comparison.
+Because each machine has it's own unique NGEN'd files, you will have to run this
+script on the machine you are collecting the performance runs. After creating
+the PDB files, you'll have to copy them into your symbol server on the machine
+where you are analyzing the performance runs. 
 
-.PARAMETER NewDir
-The new directory to compare to.
+Also note that not all files in the GAC can be NGEN'd so you might see some errors
+about unable to create the PDB.
 
-.PARAMETER Excludes
- The array of exclusions, including wildcards, so you can filter out some of 
- the extraneous files.
+.PARAMETER CacheDirectory
+The cache directory to place the resulting PDB files. If not specified, looks
+at the Visual Studio 2012/2013/2015 symbol settings and uses that as the cache 
+directory.
 
-.PARAMETER Recurse
-Recurse the directory tree. The default is to just look at the directory.
+On a machine without Visual Studio where you are using the command line profiling
+tools, alway specify this parameter.
 
-.PARAMETER Force
-Allows the cmdlet to get items that cannot otherwise not be accessed by the 
-user, such as hidden or system files.
+.PARAMETER DoAllGACFiles
+By default, this command only does the NGEN'd binaries that are in the .NET 
+framework directories for both x86 and x64. If you need other NGEN'd binaries
+from 3rd pary tools, specify this switch. Some NGEN'd binaries, but not from the .NET 
+framework, will report errors when attempting to build their PDB files.
 
-.PARAMETER Content
-Check the content of matching filenames in both directories to see if they are 
-equal. This is done through the Get-Hash cmdlet also in this module.
+.PARAMETER Quiet
+Because it can take a long while for this function to produce all the PDB files
+it reports the assembly being processed. If this is annoying to you, specifing 
+-Quiet will turn off that output. Any warnings about PDB creation will still be
+reported.
 
-.OUTPUTS 
-HashTable
-The name is the file, and the value is the difference indicator. If the 
-directories are identical, an empty hash table is returned.
+.NOTES
+To read more about using NGEN to produce PDB files after a binary has been precompiled
+see this article: http://blogs.msdn.com/b/visualstudioalm/archive/2012/12/10/creating-ngen-pdbs-for-profiling-reports.aspx
 
-.EXAMPLE
-C:\PS>Compare-Directories .\Original .\Copied -Content
-    
-    
-Compares the original directory against a copied directory for both filenames 
-and content.
-    
-This shows that both file a.pptx, and c.pptx are in both directories but the 
-content is different. Files f.pptx and i.pptx are only in the .\Copied 
-directory.    
-    
-Name                           Value
-----                           -----
-a.pptx                         !=
-c.pptx                         !=
-f.pptx                         =>
-i.pptx                         =>
+For an alternative implementation to this one, see 
+http://knagis.miga.lv/blog/post/2013/01/22/VS2012-Windows-8-profilesana-ar-NGEN-bibliotekam.aspx
+
+.LINK
+http://www.wintellect.com/blogs/jrobbins
+https://github.com/Wintellect/WintellectPowerShell
 
 #>
-    param (
-        [Parameter(Mandatory=$true)]
-        [string] $OriginalDir,
-        [Parameter(Mandatory=$true)]
-        [string] $NewDir,
-        [string[]] $Excludes,
-        [switch] $Recurse,
-        [switch] $Force,
-        [switch] $Content
-        )
+    param 
+    (
+        [string]$CacheDirectory = "",
+        [switch]$DoAllGACFiles,
+        [switch]$Quiet
+    )
 
-    if ((Test-Path $OriginalDir) -eq $false)
+    # If the CacheDirectory is empty, use the symbol path directory.
+    if ($CacheDirectory.Length -eq 0)
     {
-        throw "$OriginalDir does not exist"
-    }
-
-    if ((Test-Path $NewDir) -eq $false)
-    {
-        throw "$NewDir does not exist"
-    }
-    
-    # I need the real paths for the two input directories.
-    $OriginalDir = (Resolve-Path $OriginalDir).ToString().Trim("\")
-    $NewDir = (Resolve-Path $NewDir).ToString().Trim("\")
-    # When you do a Resolve-Path on a network share you get the 
-    # Microsoft.PowerShell.Core\FileSystem:: added to the name so 
-    # yank it off if there.
-    $OriginalDir = StripFileSystem -directory $OriginalDir
-    $NewDir = StripFileSystem -directory $NewDir
-
-    # Do the work to find all the files.
-    $origFiles = Get-ChildItem -Path $OriginalDir -Recurse:$Recurse -Force:$Force -Exclude $Excludes
-    $newFiles = Get-ChildItem -Path $NewDir -Recurse:$Recurse -Force:$Force -Exclude $Excludes
-
-    # Here I'm going to strip off the initial directories and leave the names. Thus if
-    # the OriginalDir was C:\FOO and one of the files is C:\FOO\BAR.TXT, the result would
-    # be BAR.TXT (C:\FOO\BAZ\Z.TXT -> BAZ\Z.TXT. This will make it easier for content checking. 
-    # The issue is that by doing the content checking on the default return type from 
-    # Compare-Object, I'd lose the relativeness of the filenames. By forcing the data 
-    # to be the relative filenames from input I can do the content comparisons much easier.
-    $origFiles = $origFiles | ForEach-Object { $_.FullName.Remove(0,$OriginalDir.Length+1) }
-    $newFiles = $newFiles | ForEach-Object { $_.FullName.Remove(0,$NewDir.Length+1) }
- 
-    # If either return is empty, create an empty array so I can return correct data.
-    if ($origFiles -eq $null)
-    {
-        $origFiles = @()
-    }
-    if ($newFiles -eq $null)
-    {
-        $newFiles = @()
-    }
-
-    # Now do the comparisons on the names only.
-    $nameComp = Compare-Object -ReferenceObject $origFiles -DifferenceObject $newFiles
-
-    # The hash we are going to return.
-    $resultHash = @{}
-    
-    # If there's no differences, $nameComp is null.
-    if ($nameComp -ne $null)
-    {
-        # Push the PSCustomObject type into a resultHash table so content checking can put it's custom
-        # results into the table.
-        $nameComp | ForEach-Object { $resultHash[$_.InputObject] = $_.SideIndicator}
-    }
-
-    # if comparing the content
-    if ($Content)
-    {
-        # Get just the matching values by calling Compare-Object -ExcludeDifferent -IncludeEqual.
-        # Note that I'm using -PassThru here because I want result to be the identical filenames, not the
-        # normal custom object returned by Compare-Object.
-        $sameFiles = Compare-Object -ReferenceObject $origFiles -DifferenceObject $newFiles -IncludeEqual -ExcludeDifferent -PassThru
-
-        foreach($file in $sameFiles)
+        # I have to look for the cache directory. First I'll start with the easy checks
+        # by using Get-SymbolServer to pull out the VS versions. As a last resort, I have
+        # to try and grab it from the _NT_SYMBOL_PATH environment variable.
+        $symServs = Get-SymbolServer
+        if ($symServs.Count -eq 0)
         {
-        
-            # Build up the paths to the original file and the new file.
-            $orig = $OriginalDir
-            $orig += "\" + $file 
+            throw "You don't have a symbol server set"
+        }
 
-            # Am I about to check a directory that's in both places? If so, skip it because the
-            # hash will be different because the strings are different.
-            if ((Get-Item $orig) -is [System.IO.DirectoryInfo])
+        $vsVersion = $null
+        $symPath = $symServs["VS 2013"]
+        if ($symPath -eq $null)
+        {
+            $symPath = $symServs["VS 2012"]
+            if ($symPath -eq $null)
+            {
+                # Pull it out of _NT_SYMBOL_PATH. Yes this is only looking at the
+                # first cache directory specified.
+                $symPath = $symServs["_NT_SYMBOL_PATH"]
+                if ($symPath -eq $null)
+                {
+                    throw "No symbol server configured"
+                }
+                else
+                {
+                    if ($symPath -match "SRV\*(?<SymCache>[^*]*)\*(?:.*)\;?")
+                    {
+                        $symPath = $Matches["SymCache"]
+                    }
+                    else
+                    {
+                        throw "_NT_SYMBOL_PATH environment variable does not specify a symbol cache"
+                    }
+                }
+            }
+            else
+            {
+                $vsVersion = "11.0"
+            }
+        }
+        else
+        {
+            $vsVersion = "12.0"
+        }
+
+        if ($vsVersion -ne $null)
+        {
+            # If using the public symbol servers I have to put PublicSymbols on the path.
+            if ((Get-ItemProperty -Path "HKCU:\Software\Microsoft\VisualStudio\$vsVersion\Debugger").SymbolUseMSSymbolServers -eq 1)
+            {
+                $SymPath = Join-Path -Path $symPath -ChildPath "PublicSymbols"
+            }
+        }
+
+        if ($symPath.Length -eq 0)
+        {
+            throw "The symbol path is empty"
+        }
+
+        $CacheDirectory = $symPath
+    }
+    else
+    {
+        if (-not (Test-Path -Path $CacheDirectory))
+        {
+            New-Item -Path $CacheDirectory -Type Directory | Out-Null
+        }
+    }
+
+    # Get all the *.ni.dll files out of the 4.* GAC locations
+    $gacSearchPath = $env:windir + "\assembly\NativeImages_v4*"
+    $files = Get-ChildItem -Recurse -Path $gacSearchPath -Filter "*.ni.dll" -Exclude "*.resources.ni.dll"
+
+    # I'll need this later to strip off the .ni.dll
+    $niLength = ".ni.dll".Length
+
+    foreach ($f in $files)
+    {
+        # Build up the command line to call NGEN.EXE on this binary.
+        # Get the name of the DLL.
+        $baseName = (Split-Path -Path $f -Leaf)
+        $baseName = $baseName.SubString(0, $baseName.Length - $niLength)
+
+        # Extract out the bit version of this compiled binary so I know if I'm supposed
+        # to run the 32 or 64 bit version of NGEN.EXE and where to check if the file exists.
+        # The replace looks weird but that's how you get \\ into the path. :)
+        $pattern = $env:windir -replace '\\' , '\\'
+        $pattern += "\\assembly\\NativeImages_(?<version>v4\.\d\.\d\d\d\d\d)_(?<bits>\d\d)"
+        $f.FullName -match $pattern | Out-Null
+
+        $bits = '64'
+        if ($Matches.bits -eq '32')
+        {
+            $bits = ''
+        }
+
+        $fwVersion = $Matches.version
+ 
+        # if doing the default of only framework files, check to see if this
+        # file is in the appropriate directory.
+        if ($DoAllGACFiles.IsPresent -eq $false)
+        {
+            # Build up the framework path.
+            $fwPath = Join-Path -Path $env:windir -ChildPath "Microsoft.NET"
+            $fwPath = Join-Path -Path $fwPath -ChildPath ("Framework" + $bits)
+            $fwPath = Join-Path -Path $fwPath -ChildPath $fwVersion
+
+            $fwFile = Get-ChildItem -Recurse -Path $fwPath -Filter ($baseName + ".dll")
+            if ($fwFile -eq $null)
             {
                 continue 
             }
 
-            $new = $NewDir 
-            $new += "\" + $file
+        }
 
-            $origHash = Get-Hash $orig
-            $newHash = Get-Hash $new
-
-            if ($origHash -ne $newHash)
+        if ($Quiet.IsPresent -eq $false)
+        {
+            $msgBitness = '(x86)'
+            if ($bits -eq "64")
             {
-                $resultHash[$file] = "!="
+                $msgBitness = "(x64)"
             }
+            Write-Host -Object "Generating PDB file for $msgBitness $baseName.dll"
+        }
+        
+        $ngenCmd = $env:windir + "\Microsoft.NET\Framework" + $bits + "\" + $fwVersion + "\NGEN.EXE" + ' createPDB ' + '"' + $f.FullName + '"' + ' "' + $CacheDirectory +'"'
+
+        $outputData = Invoke-Expression $ngenCmd
+
+        if ($LASTEXITCODE -ne 0)
+        {
+            # This may look odd, but it's because Write-Warning is too dumb to write arrays.
+            Write-Warning ([String]::Join("`n", $outputData))
         }
     }
-
-    # Nice trick to get the hash sorted by Name so it's easier to read.
-    $resultHash.GetEnumerator()  | Sort-Object -Property Name
 }
 
-function StripFileSystem([string]$directory)
-{
-    $fsText = "Microsoft.PowerShell.Core\FileSystem::" 
-    if ($directory.StartsWith($fsText))
-    {
-        $fsLen = $fsText.Length
-        $dirLen = $directory.Length
-        $directory = $directory.Substring($fsLen,$dirLen - $fsLen)
-    }
-    return $directory
-}
 
 # SIG # Begin signature block
 # MIIYSwYJKoZIhvcNAQcCoIIYPDCCGDgCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQULpAmNud1EY7qgJxWI1+U8TfO
-# sJCgghM8MIIEhDCCA2ygAwIBAgIQQhrylAmEGR9SCkvGJCanSzANBgkqhkiG9w0B
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUM0zTGE40n2XUE8P+h/FN39sC
+# iZOgghM8MIIEhDCCA2ygAwIBAgIQQhrylAmEGR9SCkvGJCanSzANBgkqhkiG9w0B
 # AQUFADBvMQswCQYDVQQGEwJTRTEUMBIGA1UEChMLQWRkVHJ1c3QgQUIxJjAkBgNV
 # BAsTHUFkZFRydXN0IEV4dGVybmFsIFRUUCBOZXR3b3JrMSIwIAYDVQQDExlBZGRU
 # cnVzdCBFeHRlcm5hbCBDQSBSb290MB4XDTA1MDYwNzA4MDkxMFoXDTIwMDUzMDEw
@@ -309,23 +326,23 @@ function StripFileSystem([string]$directory)
 # VQQDExhDT01PRE8gQ29kZSBTaWduaW5nIENBIDICEHF/qKkhW4DS4HFGfg8Z8PIw
 # CQYFKw4DAhoFAKB4MBgGCisGAQQBgjcCAQwxCjAIoAKAAKECgAAwGQYJKoZIhvcN
 # AQkDMQwGCisGAQQBgjcCAQQwHAYKKwYBBAGCNwIBCzEOMAwGCisGAQQBgjcCARUw
-# IwYJKoZIhvcNAQkEMRYEFDB3xk9gMWPM3Lk4D56jVye1MnTRMA0GCSqGSIb3DQEB
-# AQUABIIBAGxMsKhJYubowsru5DV+atMr0yx/Y5dkMxTt+6x0k15tNcsL0vGeBzfZ
-# v41mjwpsnehyYpRURq+7dAQnvoPZgyDWU58+8+gPNhysfAgeLkFmi0jj91ZNEUWz
-# ScvmmVAw3yYyFa2RkdBEIeEzFKhiJfd0OdvZXAJj1hG0FsywR4AxQbIMNjwPi4RO
-# AVeWDm1ZhIi2VTbbSAPDKmAac1Y+38V3k/zye+tsxpa+e+DIBWp2vigiVwqwpu6W
-# L3HAf0nC71GzXUyxY6q1Rjf4TjHwOGfbqnzD76uBD2ryX4mRrr8FS9079U+/oU7e
-# 4Sqap112HpTir75/PKlXuQ6tvx9DA2qhggJEMIICQAYJKoZIhvcNAQkGMYICMTCC
+# IwYJKoZIhvcNAQkEMRYEFDISa2wWM0d0aO9Qs8EKKtvjb0c5MA0GCSqGSIb3DQEB
+# AQUABIIBAEIhrIut4sBmPYdM1E+MCqzsZVz1ZEJ3EGSuki15bVXKNrJKJTJS6OwO
+# w0w2A0eAoJcnJBjmmrqy95cumBF3PybvULPnL5OPCtBkKz3DAqI4j3uvcdILmq9W
+# WAvlA0jI2qlCQHC+WaWDwfcQ2JGACA7v165PSiFd+H90jQep8XBIvv3FGRPzxgc6
+# dsXg3/mll4xbkCtZElPdi/kCAotbu30hxrM/XnR6VVyphVj7ANJaQluaHFdfb/l5
+# xKAb54GNxEr7gR0hIj7RjzMeGT+hbxbCUWgW3IttIDK5n6aRHhhLUSpric2Bsh79
+# SRHpBBQF0GVnrCsEK0Gomy/0wWO6RhGhggJEMIICQAYJKoZIhvcNAQkGMYICMTCC
 # Ai0CAQAwgaowgZUxCzAJBgNVBAYTAlVTMQswCQYDVQQIEwJVVDEXMBUGA1UEBxMO
 # U2FsdCBMYWtlIENpdHkxHjAcBgNVBAoTFVRoZSBVU0VSVFJVU1QgTmV0d29yazEh
 # MB8GA1UECxMYaHR0cDovL3d3dy51c2VydHJ1c3QuY29tMR0wGwYDVQQDExRVVE4t
 # VVNFUkZpcnN0LU9iamVjdAIQR4qO+1nh2D8M4ULSoocHvjAJBgUrDgMCGgUAoF0w
-# GAYJKoZIhvcNAQkDMQsGCSqGSIb3DQEHATAcBgkqhkiG9w0BCQUxDxcNMTQwMzEx
-# MjI0NzE1WjAjBgkqhkiG9w0BCQQxFgQUG9xV8USQsKgWTsj/2sW3Nd2pFNgwDQYJ
-# KoZIhvcNAQEBBQAEggEAJnDLUdLx0WyaHpFwm988Fa6uwZP93LtfgtH5FRkEyQQL
-# ld0DyFJzxICBce/tEK16YA1zK5myhmN9zd1Vzv9yD5bUI/VM4EXAiJrlQ0aU13+9
-# DdWoQ4IMNTC+9DTWhLqDvyXDBwSQNDDXu4BlIljW+QXyffX+xurCb0DA1vdB0B0P
-# MI9OZ5Wb2DB03NY4WQD78fHww1u+q3Agb4bTuYLDdFuww3XrA75aOxjx7g4QSbsi
-# CcVq34qqBNzYFvC+D+rTGWSt4tCa91qXR4kbyIi4hJt5lHzpnYAtI7CSBd4V3JhS
-# gihSL5Z8rUQxBKU45tDXj3T+/zUld2KIx6sqZLOPgw==
+# GAYJKoZIhvcNAQkDMQsGCSqGSIb3DQEHATAcBgkqhkiG9w0BCQUxDxcNMTQwNzEw
+# MDU1MDU2WjAjBgkqhkiG9w0BCQQxFgQUuuFBw1HL3LrX6R1Y3j/5rNgqTkcwDQYJ
+# KoZIhvcNAQEBBQAEggEAHMH5p3M0k8zq7lZlJHSBs5NdV62KscDbjiSUoH5lq/0S
+# 79EkWyb9PpLAY1LcQ35KC5zNa7DcvztjJWnaZFRihLyFElr6zrV70IZ0cTgoJwpu
+# y4FW2Z0y5yj11QupbHYlnnt6G8FIu431RGNreMhv5qLZNDSLwjOYK7xncIN49UDp
+# LhXYSCxLnKMoA92YXED2lXBT+oJxr4X93DzNhjXlMo6T0de8J0hkfcp2bW18FxpR
+# NFsYKSZ4ywlFUPNpRk1L+vBiNGCOdO2ydqEn1mwfWERxhCN/inuotbGSA34ZEInZ
+# Odsj8Sp3+unmWLjmWVqsaiDnVwOj1UXzSdPsxv7NHA==
 # SIG # End signature block

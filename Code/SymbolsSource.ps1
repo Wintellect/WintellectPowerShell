@@ -16,6 +16,7 @@ Set-StrictMode -version Latest
 $script:devTenDebuggerRegKey = "HKCU:\Software\Microsoft\VisualStudio\10.0\Debugger"
 $script:devElevenDebuggerRegKey = "HKCU:\Software\Microsoft\VisualStudio\11.0\Debugger"
 $script:devTwelveDebuggerRegKey = "HKCU:\Software\Microsoft\VisualStudio\12.0\Debugger"
+$script:devFourteenDebuggerRegKey = "HKCU:\Software\Microsoft\VisualStudio\14.0\Debugger"
 
 ###############################################################################
 # Module Only Functions
@@ -28,7 +29,7 @@ function CreateDirectoryIfNeeded ( [string] $directory )
 	}
 }
 
-# Reads the values from VS 2010, VS 2012, and the environment.
+# Reads the values from VS 2010+, and the environment.
 function GetCommonSettings($regValue, $envVariable)
 {
     $returnHash = @{}
@@ -46,6 +47,11 @@ function GetCommonSettings($regValue, $envVariable)
     {
         $returnHash["VS 2013"] = 
                 (Get-ItemProperty -Path $devTwelveDebuggerRegKey).$regValue
+    }
+    if (Test-Path -Path $devFourteenDebuggerRegKey)
+    {
+        $returnHash["VS 2015"] = 
+                (Get-ItemProperty -Path $devFourteenDebuggerRegKey).$regValue
     }
     $envVal = Get-ItemProperty -Path HKCU:\Environment -Name $envVariable -ErrorAction SilentlyContinue
     if ($envVal -ne $null)
@@ -147,13 +153,13 @@ Returns a hashtable of the current source server settings.
 
 .DESCRIPTION
 Returns a hashtable with the current source server directories settings
-for VS 2010, VS 2012, VS 2013, and the _NT_SOURCE_PATH enviroment variable 
+for VS 2010-2015, and the _NT_SOURCE_PATH enviroment variable 
 used by WinDBG.
 
 .OUTPUTS 
 HashTable
-The keys are, if all present, VS 2010, VS 2012, VS 2013, and WinDBG. The 
-values are those set for each debugger.
+The keys are, if all present, VS 2010, VS 2012, VS 2013, VS 2015, and WinDBG. 
+The  values are those set for each debugger.
 
 .LINK
 http://www.wintellect.com/blogs/jrobbins
@@ -163,7 +169,6 @@ https://github.com/Wintellect/WintellectPowerShell
     GetCommonSettings SourceServerExtractToDirectory _NT_SOURCE_PATH
 }
 
-Export-ModuleMember -Function Get-SourceServer
 ###############################################################################
 
 function Set-SourceServer
@@ -173,8 +178,8 @@ function Set-SourceServer
 Sets the source server directory.
 
 .DESCRIPTION
-Sets the source server cache directory for VS 2010, VS 2012, VS 2013, and 
-WinDBG  through the _NT_SOURCE_PATH environment variable to all reference 
+Sets the source server cache directory for VS 2010, VS 2012, VS 2013, VS 2015, 
+and WinDBG  through the _NT_SOURCE_PATH environment variable to all reference 
 the same location. This ensures you only download the file once no matter 
 which debugger you use. Because this cmdlet sets an environment variable 
 you need to log off to ensure it's properly set.
@@ -223,13 +228,17 @@ https://github.com/Wintellect/WintellectPowerShell
             Set-ItemProperty -Path $devTwelveDebuggerRegKey -Name $sourceServExtractTo -Value $Directory 
         }
 
+        if (Test-Path -Path $devFourteenDebuggerRegKey)
+        {
+            Set-ItemProperty -Path $devFourteenDebuggerRegKey -Name $sourceServExtractTo -Value $Directory 
+        }
+
         # Always set the _NT_SOURCE_PATH value for WinDBG.
         Set-ItemProperty -Path HKCU:\Environment -Name _NT_SOURCE_PATH -Value "SRV*$Directory"
     }
         
 }
 
-Export-ModuleMember -Function Set-SourceServer
 ###############################################################################
 
 function Get-SymbolServer
@@ -240,7 +249,8 @@ Returns a hashtable of the current symbol server settings.
 
 .DESCRIPTION
 Returns a hashtable with the current source server directories settings
-for VS 2010, VS 2012, VS 2013, and the _NT_SYMBOL_PATH enviroment variable.
+for VS 2010, VS 2012, VS 2013, VS 2015, and the _NT_SYMBOL_PATH enviroment 
+variable.
 
 .LINK
 http://www.wintellect.com/blogs/jrobbins
@@ -249,7 +259,6 @@ https://github.com/Wintellect/WintellectPowerShell
     GetCommonSettings SymbolCacheDir _NT_SYMBOL_PATH
 }
 
-Export-ModuleMember -Function Get-SymbolServer
 ###############################################################################
 
 function Get-SourceServerFiles
@@ -274,8 +283,8 @@ The optional parameter to specify where SRCTOOL.EXE resides.
 
 .OUTPUTS 
 HashTable
-The keys are, if all present, VS 2010, VS 2012, and WinDBG. The values
-are those set for each debugger.
+The keys are, if all present, VS 2010, VS 2012, VS 2013, VS 2015, and WinDBG. 
+The values are those set for each debugger.
 
 .LINK
 http://www.wintellect.com/blogs/jrobbins
@@ -320,7 +329,6 @@ https://github.com/Wintellect/WintellectPowerShell
 
 }
 
-Export-ModuleMember -Function Get-SourceServerFiles
 ###############################################################################
 
 function Set-SymbolServer
@@ -331,9 +339,9 @@ Sets up a computer to use a symbol server.
 
 DESCRIPTION
 Sets up both the _NT_SYMBOL_PATH environment variable as well as VS 2010, VS 2012, 
-and VS 2013 (if installed) to use a common symbol cache directory as well as common 
-symbol servers. Optionally can be used to only set _NT_SYMBOL_PATH for an individual
-PowerShell window.
+VS 2013, and VS 2015 (if installed) to use a common symbol cache directory as well 
+as common symbol servers. Optionally can be used to only set _NT_SYMBOL_PATH for 
+an individual PowerShell window.
 
 .PARAMETER Internal
 Sets the symbol server to use to http://SymWeb. Visual Studio will not use the 
@@ -428,6 +436,12 @@ https://github.com/Wintellect/WintellectPowerShell
         
                 SetInternalSymbolServer $devTwelveDebuggerRegKey $CacheDirectory $symPath
             }
+
+            if (Test-Path -Path $devFourteenDebuggerRegKey)
+            {
+        
+                SetInternalSymbolServer $devFourteenDebuggerRegKey $CacheDirectory $symPath
+            }
         }
     }
     else
@@ -478,6 +492,11 @@ https://github.com/Wintellect/WintellectPowerShell
             {
                 SetPublicSymbolServer $devTwelveDebuggerRegKey $CacheDirectory
             }
+
+            if (Test-Path -Path $devFourteenDebuggerRegKey)
+            {
+                SetPublicSymbolServer $devFourteenDebuggerRegKey $CacheDirectory
+            }
         }
     }
 
@@ -491,7 +510,6 @@ https://github.com/Wintellect/WintellectPowerShell
     }
 }
 
-Export-ModuleMember -Function Set-SymbolServer
 ###############################################################################
 # SIG # Begin signature block
 # MIIYSwYJKoZIhvcNAQcCoIIYPDCCGDgCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB

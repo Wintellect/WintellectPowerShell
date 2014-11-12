@@ -1,7 +1,7 @@
 ﻿#requires -version 2.0
 ###############################################################################
 # WintellectPowerShell Module
-# Copyright (c) 2010-2013 - John Robbins/Wintellect
+# Copyright (c) 2010-2014 - John Robbins/Wintellect
 # 
 # Do whatever you want with this module, but please do give credit.
 ###############################################################################
@@ -10,64 +10,95 @@
 # followed.
 Set-StrictMode -version Latest
 
-
-function Set-Environment
+function Invoke-CmdScript 
 {
 <#
 .SYNOPSIS
-Brings the CMD SET command back to PowerShell.
+Executes the specified command script and imports the environment into current
+PowerShell instance.
 
 .DESCRIPTION
-PowerShell has a powerfull way to set environment variables, but many of us 
-have the DOS SET command burned into our fingers. This function keeps us
-productive. :) 
+Running development tools at the command line in PowerShell can be a hassle since 
+they rely on environment varibles and those are set through batch files. This 
+cmdlet runs those batch files and imports any set environment variables into
+the running PowerShell instance. 
 
-Full credit to Wes Haggard at http://weblogs.asp.net/whaggard for this gem. 
+.PARAMETER script
+The required batch file to run.
 
-To replace the default set alias with the one provided by WintellectPowerShell, 
-execute the following command before importing the this module.
+.PARAMETER parameters
+The optional parameters to pass to the batch file.
 
-Remove-Item alias:set -Force -ErrorAction SilentlyContinue
-
-
-.PARAMETER Var
-The environment variable in SET format, "var=value". If you want to clear an 
-environment variable, use "var=". If no parameter is specified, this will dump
-all environment variables currently defined.
+.NOTES
+The original script is by Lee Holmes. I updated the script to make removing environment variables
+work.
 
 .LINK
-http://weblogs.asp.net/whaggard/archive/2007/02/08/powershell-version-of-cmd-set.aspx
+http://www.leeholmes.com/blog/2006/05/11/nothing-solves-everything-%e2%80%93-powershell-and-other-technologies/
 https://github.com/Wintellect/WintellectPowerShell
-
 #>
+    param
+    (
+        [Parameter(Mandatory=$true,
+                   Position=0,
+                   HelpMessage="Please specify the command script to execute.")]
+        [string] $script, 
+        [Parameter(Position=1)]
+        [string] $parameters
+    )  
 
-	[string]$var = $Args
-	if ($var -eq "")
-	{
-		get-childitem env: | sort-object name
-	}
-	else
-	{
-		if ($var -match "^(\S*?)\s*=\s*(.*)$")
-		{
-			set-item -force -path "env:$($matches[1])" -value $matches[2];		
-		}
-		else
-		{
-			write-error "ERROR Usage: VAR=VALUE"
-		}
-	}	
+    # Save off the current environment variables in case there's an issue
+    $oldVars = $(Get-ChildItem -Path env:\)
+    $tempFile = [IO.Path]::GetTempFileName()  
+    
+    try
+    {
+        ## Store the output of cmd.exe.  We also ask cmd.exe to output   
+        ## the environment table after the batch file completes  
+        cmd /c " `"$script`" $parameters && set > `"$tempFile`" "
+
+        if ($LASTEXITCODE -ne 0)
+        {
+            throw "Error executing CMD.EXE: $LASTEXITCODE"
+        }
+        
+        # Before we delete the environment variables get the output into a string
+        # array.
+        $vars = Get-Content -Path $tempFile
+    
+        # Clear out all current environment variables in PowerShell.
+        Get-ChildItem -Path env:\ | Foreach-Object { 
+                        set-item -force -path "ENV:\$($_.Name)" -value "" 
+                    }
+ 
+
+        ## Go through the environment variables in the temp file.  
+        ## For each of them, set the variable in our local environment.  
+        $vars | Foreach-Object {   
+                            if($_ -match "^(.*?)=(.*)$")  
+                            { 
+                                Set-Content "env:\$($matches[1])" $matches[2]
+                            } 
+                        }
+    }
+    catch
+    {
+        "ERROR: $_"
+
+        # Any problems, restore the old environment variables.
+        $oldVars | ForEach-Object { Set-Item -Force -Path "ENV:\$($_.Name)" -value $_.Value }
+    }
+    finally
+    {
+        Remove-Item -Path $tempFile -Force -ErrorAction SilentlyContinue
+    }
 }
-
-Set-Alias -Name set -Value Set-Environment -Description "WintellectPowerShell alias" -Option AllScope -Force
-
-Export-ModuleMember -Alias set -Function Set-Environment
 
 # SIG # Begin signature block
 # MIIYSwYJKoZIhvcNAQcCoIIYPDCCGDgCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUPjz6yldWfrrDI5iJRRyyEhWX
-# sqGgghM8MIIEhDCCA2ygAwIBAgIQQhrylAmEGR9SCkvGJCanSzANBgkqhkiG9w0B
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUol76t3TBzYa23uNRpvc0gwZb
+# lF6gghM8MIIEhDCCA2ygAwIBAgIQQhrylAmEGR9SCkvGJCanSzANBgkqhkiG9w0B
 # AQUFADBvMQswCQYDVQQGEwJTRTEUMBIGA1UEChMLQWRkVHJ1c3QgQUIxJjAkBgNV
 # BAsTHUFkZFRydXN0IEV4dGVybmFsIFRUUCBOZXR3b3JrMSIwIAYDVQQDExlBZGRU
 # cnVzdCBFeHRlcm5hbCBDQSBSb290MB4XDTA1MDYwNzA4MDkxMFoXDTIwMDUzMDEw
@@ -175,23 +206,23 @@ Export-ModuleMember -Alias set -Function Set-Environment
 # VQQDExhDT01PRE8gQ29kZSBTaWduaW5nIENBIDICEHF/qKkhW4DS4HFGfg8Z8PIw
 # CQYFKw4DAhoFAKB4MBgGCisGAQQBgjcCAQwxCjAIoAKAAKECgAAwGQYJKoZIhvcN
 # AQkDMQwGCisGAQQBgjcCAQQwHAYKKwYBBAGCNwIBCzEOMAwGCisGAQQBgjcCARUw
-# IwYJKoZIhvcNAQkEMRYEFCIN0vitIsPyDvHLxGtLD8dVHhmIMA0GCSqGSIb3DQEB
-# AQUABIIBAEFNTP/RFxbSVUyEDI5MPY0To25MOqLmiBrOZoCTxHu9BzXECeSPfYGf
-# ENTVpc4G7UxJnaLPjN+5tjs3dSNz3eQmkQDpYjcq9810TqANebXWSq4/7n0YTKpq
-# SR5zDzJp63oo54SEi17Olx6CyCQU7OAR/dWmeUnqNP/xYXSrmBUJkKI2Fu2fkwEr
-# cvJkzhrO6iPx7rpu911iBEOB12RMLJP1mXHvWH3cNHAXXCibdRg7cS/eprr1ZN5T
-# Vfbypb7mILW6/Jw2HkiEQYnIY1AzJmqDAwQ8JL2RgXaGegvpmdPbKZVVrII9A5qZ
-# TWGQkO0eeA/+YkzDpuOpIoeO3aUR+BGhggJEMIICQAYJKoZIhvcNAQkGMYICMTCC
+# IwYJKoZIhvcNAQkEMRYEFDJd2uRwlNhWdKjSqZgUAI4+/8qQMA0GCSqGSIb3DQEB
+# AQUABIIBACNvqFRP75hU4zv1BCp+mc/6ElYq8sTwBp8ZJBfhDEU8Y50AFWkfvij4
+# QSWq3+IFkY6f70hWaUUswVodIUcdGRpTErwZXDq98hfwhgvBUCKKKAqT+kf0b7w3
+# dq67IpjnVzu1jU9jBBMdwO+FWIrCMspBoCZVUXE1pbPcQj8v9qpBzXIdsFM2JxKX
+# ylZqlbOcE72bTt9FsWiI/Zvirn/hRPGLCmH0nHHoPRm7/1RuEXQF569UN0JFjpAh
+# qA0Ffq8uep9Qz40/pqPyt45FdvQs6xfNSuP39AF1fgy42yh7lIT9uZB34RGAW+/s
+# hcf5lOlCgn1smVjGWbfQIugu8OQO11uhggJEMIICQAYJKoZIhvcNAQkGMYICMTCC
 # Ai0CAQAwgaowgZUxCzAJBgNVBAYTAlVTMQswCQYDVQQIEwJVVDEXMBUGA1UEBxMO
 # U2FsdCBMYWtlIENpdHkxHjAcBgNVBAoTFVRoZSBVU0VSVFJVU1QgTmV0d29yazEh
 # MB8GA1UECxMYaHR0cDovL3d3dy51c2VydHJ1c3QuY29tMR0wGwYDVQQDExRVVE4t
 # VVNFUkZpcnN0LU9iamVjdAIQR4qO+1nh2D8M4ULSoocHvjAJBgUrDgMCGgUAoF0w
 # GAYJKoZIhvcNAQkDMQsGCSqGSIb3DQEHATAcBgkqhkiG9w0BCQUxDxcNMTMxMTA4
-# MjIxMTA1WjAjBgkqhkiG9w0BCQQxFgQUFy/Hgzj8br7zKYmcsSX3RYOpeaUwDQYJ
-# KoZIhvcNAQEBBQAEggEAHOumcfyx0fuvIhT0i7ow9Ue+xzbjFc8JJ0hv032W9k2k
-# mT65ERcTQD+l88jksPfPSqTIZxHZvFsWozSyeC+DlF66EypdL9S3r7LyZ0HQkaNZ
-# qU4lWYzFL8sDS2YMZKns7Gal+mb8IdURn95cRXn3xmCzSMz7JlWprgh/3cwiv9f4
-# h0sBvzvriU1Y1Vd0eERsdqEJ+3t71M0urRmkNKdb4pZHi8fQLfc9dopSW6KYh4PL
-# ldS+nKGIOFt5PKC+KlAAlI3G9r77mOcGFTnFCJ1m3AZ2BMcsFYz+GbuJQZTUL1L9
-# AxdrBjHmlNQ+vW5TNJBGuaE8Rgs9rgzltBXUELgTKQ==
+# MjIxMTA0WjAjBgkqhkiG9w0BCQQxFgQUs50mlfeR/LTQ5Y7yXFF9QzpPmUMwDQYJ
+# KoZIhvcNAQEBBQAEggEAZzUph40WhzHqS3j8CN9kvhpcie371ctGxOPfYi/VIRjR
+# BGAjhH3ay4jjqNH8ABCYGuD00op2QkDyrSDs7mvWOE1sT0CW/KfDgZMQTmJZTqt1
+# /7unVH3cFfT95tI3ZIVwOuXp3sw5mPzUVRsCArwmWdJwSKcXbiGUZY8DRWsdFyAN
+# WbhMztqdare+i5yxe557Gglf+tATMqYOb5oXe4C8Zgcyccq+WQicf/4ea9rEAvJ3
+# ZpwCsPnEi1dWS++XXuTZyOeUcTfo1fYPl3i1zS1xFSr+jLlEbE1lohowoNVB/USk
+# hheWViDp6WOAAo0LCdP/XO55QqAAEqC7uky+porHqw==
 # SIG # End signature block

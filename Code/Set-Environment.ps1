@@ -1,7 +1,7 @@
-#requires -version 2.0
+﻿#requires -version 2.0
 ###############################################################################
 # WintellectPowerShell Module
-# Copyright (c) 2010-2013 - John Robbins/Wintellect
+# Copyright (c) 2010-2014 - John Robbins/Wintellect
 # 
 # Do whatever you want with this module, but please do give credit.
 ###############################################################################
@@ -10,80 +10,61 @@
 # followed.
 Set-StrictMode -version Latest
 
-###############################################################################
-# Public Cmdlets
-###############################################################################
-function Get-SysinternalsSuite
+function Set-Environment
 {
 <#
 .SYNOPSIS
-Gets all the wonderful Sysinternals tools.
+Brings the CMD SET command back to PowerShell.
 
 .DESCRIPTION
-Downloads and extracts the Sysinternal tools to the directory you specify.
+PowerShell has a powerfull way to set environment variables, but many of us 
+have the DOS SET command burned into our fingers. This function keeps us
+productive. :) 
 
-.PARAMETER Extract
-The directory where you want to extract the Sysinternal tools.
+Full credit to Wes Haggard at http://weblogs.asp.net/whaggard for this gem. 
 
-.PARAMETER Save
-The default is to download the SysinternalsSuite.zip file and remove it after 
-extracting the contents. If you want to keep the file, specify the save directory 
-with this parameter.
+To replace the default set alias with the one provided by WintellectPowerShell, 
+execute the following command before importing the this module.
+
+Remove-Item alias:set -Force -ErrorAction SilentlyContinue
+
+
+.PARAMETER Var
+The environment variable in SET format, "var=value". If you want to clear an 
+environment variable, use "var=". If no parameter is specified, this will dump
+all environment variables currently defined.
 
 .LINK
-http://www.wintellect.com/blogs/jrobbins
+http://weblogs.asp.net/whaggard/archive/2007/02/08/powershell-version-of-cmd-set.aspx
 https://github.com/Wintellect/WintellectPowerShell
 
 #>
-    param ( 
-        [Parameter(Mandatory=$true,
-                   HelpMessage="Please specify the extract directory")]
-        [string] $Extract ,
-        [Parameter(HelpMessage="Please specify the directory to expand into")]
-        [string] $Save
-    ) 
-    
-	New-Item -ItemType Directory -Path $Extract -ErrorAction SilentlyContinue > $null
 
-    [Boolean]$deleteZipFile = $TRUE
-    [String]$downloadFile = ""
-    if ( $Save.Length -gt 0 )
-    { 
-        New-Item -ItemType Directory -Path $Save -ErrorAction SilentlyContinue > $null
-        $downloadFile = $Save
-        $deleteZipFile = $FALSE
-    }
-    else
-    { 
-        # Use the %TEMP% path for the user.
-        $downloadFile = $env:temp
-    }
-    
-    # Build up the full location and filename.
-    $downloadFile = $(Get-item $downloadFile).FullName
-    $downloadFile = Join-Path -path $downloadFile -childpath "SysinternalsSuite.zip" 
-
-    # Let the download begin!
-    Write-Output "Starting download of the Sysinternals Suite"
-    $webClient = New-Object System.Net.WebClient
-    $webClient.DownloadFile("http://download.sysinternals.com/files/SysinternalsSuite.zip" ,
-                            $downloadFile)
-    Write-Output "Sysinternals suite downloaded to $downloadFile"
-
-    Write-Output "Extracting files into $Extract"
-    Expand-ZipFile $downloadFile $Extract
-    
-    if ($deleteZipFile -eq $true)
-    {
-        Remove-Item $downloadFile    
-    }
+	[string]$var = $Args
+	if ($var -eq "")
+	{
+		get-childitem -Path env: | sort-object -Property name
+	}
+	else
+	{
+		if ($var -match "^(\S*?)\s*=\s*(.*)$")
+		{
+			set-item -force -path "env:$($matches[1])" -value $matches[2];		
+		}
+		else
+		{
+			write-error -Message "ERROR Usage: VAR=VALUE"
+		}
+	}	
 }
+
+Set-Alias -Name set -Value Set-Environment -Description "WintellectPowerShell alias" -Force -Scope Global -Option AllScope
 
 # SIG # Begin signature block
 # MIIYSwYJKoZIhvcNAQcCoIIYPDCCGDgCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUG9Xgoyv3md0+q8K9W5OyjsJc
-# Cw+gghM8MIIEhDCCA2ygAwIBAgIQQhrylAmEGR9SCkvGJCanSzANBgkqhkiG9w0B
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUPjz6yldWfrrDI5iJRRyyEhWX
+# sqGgghM8MIIEhDCCA2ygAwIBAgIQQhrylAmEGR9SCkvGJCanSzANBgkqhkiG9w0B
 # AQUFADBvMQswCQYDVQQGEwJTRTEUMBIGA1UEChMLQWRkVHJ1c3QgQUIxJjAkBgNV
 # BAsTHUFkZFRydXN0IEV4dGVybmFsIFRUUCBOZXR3b3JrMSIwIAYDVQQDExlBZGRU
 # cnVzdCBFeHRlcm5hbCBDQSBSb290MB4XDTA1MDYwNzA4MDkxMFoXDTIwMDUzMDEw
@@ -191,23 +172,23 @@ https://github.com/Wintellect/WintellectPowerShell
 # VQQDExhDT01PRE8gQ29kZSBTaWduaW5nIENBIDICEHF/qKkhW4DS4HFGfg8Z8PIw
 # CQYFKw4DAhoFAKB4MBgGCisGAQQBgjcCAQwxCjAIoAKAAKECgAAwGQYJKoZIhvcN
 # AQkDMQwGCisGAQQBgjcCAQQwHAYKKwYBBAGCNwIBCzEOMAwGCisGAQQBgjcCARUw
-# IwYJKoZIhvcNAQkEMRYEFMBjmA8D59iSj0B1S3Q9t+rSkoqdMA0GCSqGSIb3DQEB
-# AQUABIIBAAk4annq6htHK/QGMfpeCkbxSgOPdAETonPVLwsd+UhatGIhHMD4CoYn
-# 4z8sDcO836Gyw9NsF3we8nLNMgK3lmmelfMt9t83ib6zYfLE/JIj++VIDj0Mnqg5
-# F9mT3rAojL3uBuUfwIuWOQ4kIlPTt1jonPocUs/vv+8wIjHiQ0rzUf87336PqGx+
-# PhZEuTRBBJ2wATGEzcK/DQ5UUvrs7nmzWBo/kPC0T4S6aRxvtwnqnvf4tGQ3Ltdb
-# NLT0Orcx0cq0TVStI3Rm8icMv1zC4bOJD1PB0gL7OAZOZ24e/UTfVv/a+NoYk9lU
-# AoTsoUYK0UcLC+DSzbCM55+iVTCSL6ihggJEMIICQAYJKoZIhvcNAQkGMYICMTCC
+# IwYJKoZIhvcNAQkEMRYEFCIN0vitIsPyDvHLxGtLD8dVHhmIMA0GCSqGSIb3DQEB
+# AQUABIIBAEFNTP/RFxbSVUyEDI5MPY0To25MOqLmiBrOZoCTxHu9BzXECeSPfYGf
+# ENTVpc4G7UxJnaLPjN+5tjs3dSNz3eQmkQDpYjcq9810TqANebXWSq4/7n0YTKpq
+# SR5zDzJp63oo54SEi17Olx6CyCQU7OAR/dWmeUnqNP/xYXSrmBUJkKI2Fu2fkwEr
+# cvJkzhrO6iPx7rpu911iBEOB12RMLJP1mXHvWH3cNHAXXCibdRg7cS/eprr1ZN5T
+# Vfbypb7mILW6/Jw2HkiEQYnIY1AzJmqDAwQ8JL2RgXaGegvpmdPbKZVVrII9A5qZ
+# TWGQkO0eeA/+YkzDpuOpIoeO3aUR+BGhggJEMIICQAYJKoZIhvcNAQkGMYICMTCC
 # Ai0CAQAwgaowgZUxCzAJBgNVBAYTAlVTMQswCQYDVQQIEwJVVDEXMBUGA1UEBxMO
 # U2FsdCBMYWtlIENpdHkxHjAcBgNVBAoTFVRoZSBVU0VSVFJVU1QgTmV0d29yazEh
 # MB8GA1UECxMYaHR0cDovL3d3dy51c2VydHJ1c3QuY29tMR0wGwYDVQQDExRVVE4t
 # VVNFUkZpcnN0LU9iamVjdAIQR4qO+1nh2D8M4ULSoocHvjAJBgUrDgMCGgUAoF0w
 # GAYJKoZIhvcNAQkDMQsGCSqGSIb3DQEHATAcBgkqhkiG9w0BCQUxDxcNMTMxMTA4
-# MjIxMTA0WjAjBgkqhkiG9w0BCQQxFgQUWnDdUBAUrUmQsc/cMvwdEKtpdtcwDQYJ
-# KoZIhvcNAQEBBQAEggEACP3oQcYAGR7jJvAf6XFDYFpsKQ7hTXsunMM2hOBR0iRD
-# 1TlbAcoK4gQswY80nK6wjXjU1i2cKmpKdvQDLn/JWsv87aHkmM7Up7+LUy2+dZvV
-# vPxf+9edWpnQHMykzMEGttZ+zv8zaSp3O0UBWRxmZghyKT9Xw1NLMEQMd3qA5C+2
-# DKDtX0lkYYqvCar574QthwMgve+c07Cx0tLf/KQHv9JmCdkWSDV2kr+MhURMMLW8
-# 4CLjx9iKag4EGWgRg1J+v7BGQBIodvNLPP1b5wfsPaSPfWDBF7IHGrI2LN3TWW3F
-# UqQCghx8wHnKyA+9kauBClylIvj0uBtJQiXFa5q3Nw==
+# MjIxMTA1WjAjBgkqhkiG9w0BCQQxFgQUFy/Hgzj8br7zKYmcsSX3RYOpeaUwDQYJ
+# KoZIhvcNAQEBBQAEggEAHOumcfyx0fuvIhT0i7ow9Ue+xzbjFc8JJ0hv032W9k2k
+# mT65ERcTQD+l88jksPfPSqTIZxHZvFsWozSyeC+DlF66EypdL9S3r7LyZ0HQkaNZ
+# qU4lWYzFL8sDS2YMZKns7Gal+mb8IdURn95cRXn3xmCzSMz7JlWprgh/3cwiv9f4
+# h0sBvzvriU1Y1Vd0eERsdqEJ+3t71M0urRmkNKdb4pZHi8fQLfc9dopSW6KYh4PL
+# ldS+nKGIOFt5PKC+KlAAlI3G9r77mOcGFTnFCJ1m3AZ2BMcsFYz+GbuJQZTUL1L9
+# AxdrBjHmlNQ+vW5TNJBGuaE8Rgs9rgzltBXUELgTKQ==
 # SIG # End signature block

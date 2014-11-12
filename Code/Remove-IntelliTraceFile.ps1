@@ -1,7 +1,7 @@
-﻿#requires -version 2.0
+#requires -version 2.0
 ###############################################################################
 # WintellectPowerShell Module
-# Copyright (c) 2010-2013 - John Robbins/Wintellect
+# Copyright (c) 2010-2014 - John Robbins/Wintellect
 # 
 # Do whatever you want with this module, but please do give credit.
 ###############################################################################
@@ -10,151 +10,102 @@
 # followed.
 Set-StrictMode -version Latest
 
-Function Get-RegistryKeyPropertiesAndValues
-
-{
-  <#
-   .Synopsis
-    This function accepts a registry path and returns all reg key properties and values
-
-   .Description
-    This function returns registry key properies and values.
-
-   .Example
-    Get-RegistryKeyPropertiesAndValues -path 'HKCU:\Volatile Environment'
-
-    Returns all of the registry property values under the \volatile environment key
-
-   .Parameter path
-    The path to the registry key
-
-   .Notes
-    NAME:  Get-RegistryKeyPropertiesAndValues
-    AUTHOR: ed wilson, msft
-    LASTEDIT: 05/09/2012 15:18:41
-    KEYWORDS: Operating System, Registry, Scripting Techniques, Getting Started
-    HSG: 5-11-12
-   .Link
-     Http://www.ScriptingGuys.com/blog
- #>
-
-    Param( [Parameter(Mandatory=$true)]
-           [string]$path)
-
-     Push-Location
-     Set-Location -Path $path
-     Get-Item . |
-        Select-Object -ExpandProperty property |
-            ForEach-Object {
-                New-Object psobject -Property @{"property"=$_;
-                    "Value" = (Get-ItemProperty -Path . -Name $_).$_}}
-     Pop-Location
-
-} 
-
 ###############################################################################
 # Public Cmdlets
 ###############################################################################
-function Import-VisualStudioEnvironment
+function Remove-IntelliTraceFiles
 {
 <#
 .SYNOPSIS
-Sets up the current PowerShell instance with the Visual Studio environment
-variables so you can use those tools at the command line.
+Removes extra IntelliTrace files that may have been left over from your 
+debugging sessions.
 
 .DESCRIPTION
-Command line usage is the way to go, but Visual Studio requires numerous 
-environment variables set in order to properly work. Since those are controlled
-by the vcvarsall.bat cmd script, it's a pain to get working. This script
-does the work of calling the specific vscarsall.bat file for the specific version
-of Visual Studio you want to use.
+Best practice with day to day debugging with IntelliTrace is to have the 
+debugger store the IntelliTrace files. This is important because you will gain 
+the ability to open the files after debugging. This option is not on by default, 
+but can be turned on by going to the VS Options dialog, IntelliTrace, Advanced 
+property page and checking "Store IntelliTrace recordings in this directory." 
 
-This implementation uses the registry to look up the installed Visual Studio 
-versions and does not rely on any preset environment variables such as 
-VS110COMNTOOLS. 
+Once you have your IntelliTrace files being saved you have a small issue that 
+VS does not always properly clean up the files after shutting down. This 
+cmdlet checks to see if you are storing the files and if you are, deletes any 
+files found in the storage directory. Since IntelliTrace files can take up a 
+lot of disk space, it's good to clean out that directory every once in a while.
+
+By default, this script works with Visual Studio 2010, 2012, 2013, and 2015
+with the default being VS 2015.
 
 .PARAMETER VSVersion
-The version of Visual Studio you want to use. If left to the default, Latest, the
-script will look for the latest version of Visual Studio installed on the computer
-as the tools to use. Specify 2008, 2010, 2012, or 2013 for a specific version.
-
-.PARAMETER Architecture
-The tools architecture to use. This defaults to the $env:PROCESSOR_ARCHITECTURE 
-environment variable so x86 and x64 are automatically handled. The valid architecture 
-values are x86, amd64, x64, arm, x86_arm, and x86_amd64.
+Removes the stored IntelliTrace files for VS 2013 by default, specify VS 2010 or VS 2012
+for those versions.
 
 .LINK
 http://www.wintellect.com/blogs/jrobbins
 https://github.com/Wintellect/WintellectPowerShell
 
 #>
+    [CmdLetBinding(SupportsShouldProcess=$true)]
+    param ( 
+            [ValidateSet("VS2010", "VS2012", "VS2013", "VS2015", "Latest")]
+            [string] $VSVersion = "Latest"
+          )
 
-    param
-    (
-        [Parameter(Position=0)]
-        [ValidateSet("Latest", "2008", "2010", "2012", "2013", "2014")]
-        [string] $VSVersion = "Latest", 
-        [Parameter(Position=1)]
-        [ValidateSet("x86", "amd64", "x64", "arm", "x86_arm", "x86_amd64")]
-        [string] $Architecture = ($Env:PROCESSOR_ARCHITECTURE)
-    )  
-
-    $versionSearchKey = "HKLM:\SOFTWARE\Wow6432Node\Microsoft\VisualStudio\SxS\VS7"
-    if ([IntPtr]::size -ne 8)
+    # First check if VS is running. If so, we can't continue as it may be using
+    # the .iTrace files.
+    $proc = Get-Process -Name devenv -ErrorAction SilentlyContinue
+    if ($proc -ne $null)
     {
-        $versionSearchKey = "HKLM:\SOFTWARE\Microsoft\VisualStudio\SxS\VS7"    
+        throw "Visual Studio is running. Please close all instances."
     }
 
-    $vsDirectory = ""
-
-    if ($VSVersion -eq 'Latest')
+    $regVer = "14.0"
+    # Default to VS 2015.
+    switch ($VSVersion)
     {
-        # Find the largest number in the install lookup directory and that will
-        # be the latest version.
-        $biggest = 0.0
-        Get-RegistryKeyPropertiesAndValues $versionSearchKey  | 
-            ForEach-Object { 
-                                if ([System.Convert]::ToDecimal($_.Property) -gt [System.Convert]::ToDecimal($biggest))
-                                {
-                                    $biggest = $_.Property
-                                    $vsDirectory = $_.Value 
-                                }
-                            }  
-    }
-    else
-    {
-        $propVal = switch($VSVersion)
-                    {
-                        "2008" { "9.0" }
-                        "2010" { "10.0" }
-                        "2012" { "11.0" }
-                        "2013" { "12.0" }
-                        # A little future-proofing. Office skipped version 13 
-                        # because in some cultures 13 is an unlucky number so 
-                        # I figure DevDiv will do the same.
-                        "2014" { "14.0" }
-                        default { throw "Unknown version of Visual Studio!" }
-                    }
-
-        $vsDirectory = (Get-ItemProperty $versionSearchKey).$propVal
+        "VS2010" { $regVer = "10.0" }
+        "VS2012" { $regVer = "11.0" }
+        "VS2013" { $regVer = "12.0" }
+        "VS2015" { $regVer = "14.0" }
+        "Latest" { $regVer = LatestVSRegistryKeyVersion }
     }
 
-    if ([String]::IsNullOrEmpty($vsDirectory))
-    {
-        throw "The requested Visual Studio version is not installed"
-    }  
+    $regKey = "HKCU:\Software\Microsoft\VisualStudio\" + 
+              $regVer + 
+              "\DialogPage\Microsoft.VisualStudio.TraceLogPackage.ToolsOptionAdvanced"
 
-    # Got the VS directory, now setup to make the call.
-    Invoke-CmdScript -script "$vsDirectory\vc\vcvarsall.bat" -parameters "$Architecture"
+    # Check to see if the user has set the options to save files. If not bail out.
+    if ( ((Test-PathReg -Path $regKey "SaveRecordings") -eq $false) -or ((Get-ItemProperty -Path $regKey).SaveRecordings -eq "False"))
+    {
+        throw "You have not configured IntelliTrace to save recordings. " +
+              "In the Options dialog, IntelliTtrace Advanced page, check the " +
+              "Store IntelliTrace recordings in this directory check box."
+    }
+    
+    $storageDir = ""
+    if ((Test-PathReg $regKey "RecordingPath") -ne $false)
+    {
+        # Get the storage directory for those files.
+        $storageDir = (Get-ItemProperty -Path $regKey).RecordingPath
+    }
+
+    if ($storageDir.Length -eq 0)
+    {
+        throw "The IntelliTrace recording directory is empty. Check the " +
+              "Options dialog, IntelliTrace Advanced page to set the "+
+              "directory."
+    }
+
+    # Clean up those files but only do the ones in the main directory so if the
+    # user may have created paths and put other files there we don't delete those.
+    Get-ChildItem -Path $storageDir -Filter "*.iTrace" | Remove-Item -Force
 }
 
-Export-ModuleMember Import-VisualStudioEnvironment
-###############################################################################
 # SIG # Begin signature block
 # MIIYSwYJKoZIhvcNAQcCoIIYPDCCGDgCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUkaASTBqLMX21bTb6x44BOety
-# MoGgghM8MIIEhDCCA2ygAwIBAgIQQhrylAmEGR9SCkvGJCanSzANBgkqhkiG9w0B
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUSr1epXv6wodOBIqie9p2CPfr
+# NmWgghM8MIIEhDCCA2ygAwIBAgIQQhrylAmEGR9SCkvGJCanSzANBgkqhkiG9w0B
 # AQUFADBvMQswCQYDVQQGEwJTRTEUMBIGA1UEChMLQWRkVHJ1c3QgQUIxJjAkBgNV
 # BAsTHUFkZFRydXN0IEV4dGVybmFsIFRUUCBOZXR3b3JrMSIwIAYDVQQDExlBZGRU
 # cnVzdCBFeHRlcm5hbCBDQSBSb290MB4XDTA1MDYwNzA4MDkxMFoXDTIwMDUzMDEw
@@ -262,23 +213,23 @@ Export-ModuleMember Import-VisualStudioEnvironment
 # VQQDExhDT01PRE8gQ29kZSBTaWduaW5nIENBIDICEHF/qKkhW4DS4HFGfg8Z8PIw
 # CQYFKw4DAhoFAKB4MBgGCisGAQQBgjcCAQwxCjAIoAKAAKECgAAwGQYJKoZIhvcN
 # AQkDMQwGCisGAQQBgjcCAQQwHAYKKwYBBAGCNwIBCzEOMAwGCisGAQQBgjcCARUw
-# IwYJKoZIhvcNAQkEMRYEFMWqZ/bQ/jF5m8zo9yQPGJqQL3V3MA0GCSqGSIb3DQEB
-# AQUABIIBAKaMI/gAx9Xd5vtQo83BR6m4ABjx3yKVTFftgCX+kI7gP4hHC2kfEDOK
-# S0Ld/JXjN7lL+NUy1tk7O+xynB2juR6ObIY9IZb6miGFxCZWhoLI823bCkK6idEk
-# 3rB0/XtV7YCbK98AxnxioMa3X18wPr3MFyKw5dRIelURVib/qZtrHu1SrVQK5rST
-# kINEynFgKd3vJN/RiJZYbQDbbCjzbx7jL4Cj2udeoJWCz8kalM3ypjRxHELNd4An
-# JIsC0ihs2yVXH7ypmMpGiSZPKjc0MIBO9l2HRMyFtLwv7JaJZCa/cTncOz1AZ5Eb
-# 3gTMDUyhGvtxl/oPga5AZXYVXT0VRzChggJEMIICQAYJKoZIhvcNAQkGMYICMTCC
+# IwYJKoZIhvcNAQkEMRYEFJ3Bp0kCB6bJ8+47I0aAjD0ESltTMA0GCSqGSIb3DQEB
+# AQUABIIBAEv1MMBlDy9hnCwRY2F6hvy6RKmtk7/WQjoWZnHxPL7TXTFUggBxEWK5
+# SAPZfQ0UkVdRBmTToSlzWRKYdrALtYUO9bVpkKeJl/kAx3JwYO3lsuytAig7Kv9v
+# DWuhip4KI9HPC0YB4ZxlNtYYhISHWx3MRS2knZG+hicDR2NZCYTksT5xjoYg+pId
+# akaRcAYlUj1paVotvbL9qgEilMCqE7/l58IfUclwubLfx+Ae/A0YIF2ORdhVYjEy
+# caQNSM3T5h10xc/RHMSslyEK05iinyRWxnWuk2av3vA9U2tpmq91KCR9nqDmhPSJ
+# 9xd1kqYxSK7mD46iXi42Hkgagdww2MihggJEMIICQAYJKoZIhvcNAQkGMYICMTCC
 # Ai0CAQAwgaowgZUxCzAJBgNVBAYTAlVTMQswCQYDVQQIEwJVVDEXMBUGA1UEBxMO
 # U2FsdCBMYWtlIENpdHkxHjAcBgNVBAoTFVRoZSBVU0VSVFJVU1QgTmV0d29yazEh
 # MB8GA1UECxMYaHR0cDovL3d3dy51c2VydHJ1c3QuY29tMR0wGwYDVQQDExRVVE4t
 # VVNFUkZpcnN0LU9iamVjdAIQR4qO+1nh2D8M4ULSoocHvjAJBgUrDgMCGgUAoF0w
 # GAYJKoZIhvcNAQkDMQsGCSqGSIb3DQEHATAcBgkqhkiG9w0BCQUxDxcNMTMxMTA4
-# MjIxMTA0WjAjBgkqhkiG9w0BCQQxFgQUZLmkdBQOze5yom4x4uBiZ6ypUzEwDQYJ
-# KoZIhvcNAQEBBQAEggEAZO/QVDn5a+GfL3v2ik+TBTOUPukvsYUZpbuniNAhjgPO
-# M2nmNM5/NbMxeBuhvHXXR8HUilb0bG6BwscOA5tAmu+8zN5oDFYnzhF+zMSF38cW
-# hB6By2AYWW37yhycLlRiCzNDwvtuRRhWFlkxJEYtQMfQYYBk8/F/WzgpyGrcvLhF
-# dn9bzxKdu5cDp3HjEeF++0EwbIagK2ZDNbijBap81MP/yg8JUrWtELL0tMDvB8Go
-# 4r1nGJAsms8eJhxACtkeCd55NmRrOmBfAX4rPCWylhc+X3yEc3eEGIdyD0kuNlHY
-# 8yg0Hyqn8fWS3+1zscFDI403634O4SLyQVw/NtXuDQ==
+# MjIxMTA0WjAjBgkqhkiG9w0BCQQxFgQUO0afJNIA7QcergAz/HDKpc1PT7QwDQYJ
+# KoZIhvcNAQEBBQAEggEAnoph5Uka6BXrDSewbd24VM79/OZzr1xKJG9OiS5e2pv1
+# SyrHPoyGVIxlf9/AAsr6LOGJbZREkS2vAF6oSzCYVRKLrYQ94lHZuofLRcS9cqoT
+# bB6zbngs043iBhYpubwOAYr2PjArpvpXhC+NAlOWlgTD8aKNYW4r1lOrHpCdqviu
+# SlyaeSWp7ceitMKs0AshjoTr/IOC5AThUtkAvF1vWzlEQUBY98yhVIl7Y6Ky7OjQ
+# sjYC7aZF1fIOeYpk/EVIT5aiL8ckSdHX7kz0wZZnFD3aZRU5PWsPRSo0XxyzMdBy
+# /YwGmeY+fX8DrjxW7TPqfWTGLz4CPpE6tpI5WA59SQ==
 # SIG # End signature block

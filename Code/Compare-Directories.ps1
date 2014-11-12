@@ -1,7 +1,7 @@
-#requires -version 2.0
+#requires -version 4.0
 ###############################################################################
 # WintellectPowerShell Module
-# Copyright (c) 2010-2013 - John Robbins/Wintellect
+# Copyright (c) 2010-2014 - John Robbins/Wintellect
 # 
 # Do whatever you want with this module, but please do give credit.
 ###############################################################################
@@ -13,40 +13,195 @@ Set-StrictMode -version Latest
 ###############################################################################
 # Public Cmdlets
 ###############################################################################
-function Get-Uptime
+
+function Compare-Directories
 {
 <#
 .SYNOPSIS
-Returns how long a computer has been running.
+Compare two directories to see if they are identical
 
 .DESCRIPTION
-Returns the TimeSpan for how long a computer is running. If you'd like it 
-formatted you can use: (Get-Uptime) -f {0}
+This cmdlet will compare two directories and report if the files are identical 
+by name, and optionally on content.
+    
+Symbol explanation:
+=> - The file is in the -NewDir directory, not the -OriginalDir.
+<= - The file is in the -OriginalDir directory and not the -NewDir.
+!= - The file is in both directories, but the content is not identical.
+    
+If the directories are identical an empty hash table is returned.
+    
+Since sometimes filenames are long, you can pipe this output of this cmdlet 
+into Format-Table -AutoSize to avoid truncating the filenames.
 
-.PARAMETER computerName
-The default is the current computer but you can specify a different computer 
-instead.
+.PARAMETER OriginalDir
+The original directory to use for the comparison.
 
-.OUTPUTS
-A TimeSpan type.
+.PARAMETER NewDir
+The new directory to compare to.
 
-.LINK
-http://www.wintellect.com/blogs/jrobbins
-https://github.com/Wintellect/WintellectPowerShell
+.PARAMETER Excludes
+ The array of exclusions, including wildcards, so you can filter out some of 
+ the extraneous files.
+
+.PARAMETER Recurse
+Recurse the directory tree. The default is to just look at the directory.
+
+.PARAMETER Force
+Allows the cmdlet to get items that cannot otherwise not be accessed by the 
+user, such as hidden or system files.
+
+.PARAMETER Content
+Check the content of matching filenames in both directories to see if they are 
+equal. This is done through the Get-FileHash cmdlet from PowerShell 4.0.
+
+.OUTPUTS 
+HashTable
+The name is the file, and the value is the difference indicator. If the 
+directories are identical, an empty hash table is returned.
+
+.EXAMPLE
+C:\PS>Compare-Directories .\Original .\Copied -Content
+    
+    
+Compares the original directory against a copied directory for both filenames 
+and content.
+    
+This shows that both file a.pptx, and c.pptx are in both directories but the 
+content is different. Files f.pptx and i.pptx are only in the .\Copied 
+directory.    
+    
+Name                           Value
+----                           -----
+a.pptx                         !=
+c.pptx                         !=
+f.pptx                         =>
+i.pptx                         =>
 
 #>
-    param( [string] $computerName = ".")
+    param (
+        [Parameter(Mandatory=$true)]
+        [string] $OriginalDir,
+        [Parameter(Mandatory=$true)]
+        [string] $NewDir,
+        [string[]] $Excludes,
+        [switch] $Recurse,
+        [switch] $Force,
+        [switch] $Content
+        )
 
-    $wmi = Get-WmiObject -class Win32_OperatingSystem -computer $computerName
-    $LBTime=$wmi.ConvertToDateTime($wmi.Lastbootuptime)
-    New-TimeSpan $LBTime $(get-date)
+    if ((Test-Path -Path $OriginalDir) -eq $false)
+    {
+        throw "$OriginalDir does not exist"
+    }
+
+    if ((Test-Path -Path $NewDir) -eq $false)
+    {
+        throw "$NewDir does not exist"
+    }
+    
+    # I need the real paths for the two input directories.
+    $OriginalDir = (Resolve-Path -Path $OriginalDir).ToString().Trim("\")
+    $NewDir = (Resolve-Path -Path $NewDir).ToString().Trim("\")
+    # When you do a Resolve-Path on a network share you get the 
+    # Microsoft.PowerShell.Core\FileSystem:: added to the name so 
+    # yank it off if there.
+    $OriginalDir = StripFileSystem -directory $OriginalDir
+    $NewDir = StripFileSystem -directory $NewDir
+
+    # Do the work to find all the files.
+    $origFiles = Get-ChildItem -Path $OriginalDir -Recurse:$Recurse -Force:$Force -Exclude $Excludes
+    $newFiles = Get-ChildItem -Path $NewDir -Recurse:$Recurse -Force:$Force -Exclude $Excludes
+
+    # Here I'm going to strip off the initial directories and leave the names. Thus if
+    # the OriginalDir was C:\FOO and one of the files is C:\FOO\BAR.TXT, the result would
+    # be BAR.TXT (C:\FOO\BAZ\Z.TXT -> BAZ\Z.TXT. This will make it easier for content checking. 
+    # The issue is that by doing the content checking on the default return type from 
+    # Compare-Object, I'd lose the relativeness of the filenames. By forcing the data 
+    # to be the relative filenames from input I can do the content comparisons much easier.
+    $origFiles = $origFiles | ForEach-Object { $_.FullName.Remove(0,$OriginalDir.Length+1) }
+    $newFiles = $newFiles | ForEach-Object { $_.FullName.Remove(0,$NewDir.Length+1) }
+ 
+    # If either return is empty, create an empty array so I can return correct data.
+    if ($origFiles -eq $null)
+    {
+        $origFiles = @()
+    }
+    if ($newFiles -eq $null)
+    {
+        $newFiles = @()
+    }
+
+    # Now do the comparisons on the names only.
+    $nameComp = Compare-Object -ReferenceObject $origFiles -DifferenceObject $newFiles
+
+    # The hash we are going to return.
+    $resultHash = @{}
+    
+    # If there's no differences, $nameComp is null.
+    if ($nameComp -ne $null)
+    {
+        # Push the PSCustomObject type into a resultHash table so content checking can put it's custom
+        # results into the table.
+        $nameComp | ForEach-Object { $resultHash[$_.InputObject] = $_.SideIndicator}
+    }
+
+    # if comparing the content
+    if ($Content)
+    {
+        # Get just the matching values by calling Compare-Object -ExcludeDifferent -IncludeEqual.
+        # Note that I'm using -PassThru here because I want result to be the identical filenames, not the
+        # normal custom object returned by Compare-Object.
+        $sameFiles = Compare-Object -ReferenceObject $origFiles -DifferenceObject $newFiles -IncludeEqual -ExcludeDifferent -PassThru
+
+        foreach($file in $sameFiles)
+        {
+        
+            # Build up the paths to the original file and the new file.
+            $orig = $OriginalDir
+            $orig += "\" + $file 
+
+            # Am I about to check a directory that's in both places? If so, skip it because the
+            # hash will be different because the strings are different.
+            if ((Get-Item -Path $orig) -is [System.IO.DirectoryInfo])
+            {
+                continue 
+            }
+
+            $new = $NewDir 
+            $new += "\" + $file
+
+            $origHash = Get-FileHash -Path $orig
+            $newHash = Get-FileHash -Path $new
+
+            if ($origHash.Hash -ne $newHash.Hash)
+            {
+                $resultHash[$file] = "!="
+            }
+        }
+    }
+
+    # Nice trick to get the hash sorted by Name so it's easier to read.
+    $resultHash.GetEnumerator()  | Sort-Object -Property Name
+}
+
+function StripFileSystem([string]$directory)
+{
+    $fsText = "Microsoft.PowerShell.Core\FileSystem::" 
+    if ($directory.StartsWith($fsText))
+    {
+        $fsLen = $fsText.Length
+        $dirLen = $directory.Length
+        $directory = $directory.Substring($fsLen,$dirLen - $fsLen)
+    }
+    return $directory
 }
 
 # SIG # Begin signature block
 # MIIYSwYJKoZIhvcNAQcCoIIYPDCCGDgCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUUdpps7Ko5EzLYjSn0ATviBYM
-# bc+gghM8MIIEhDCCA2ygAwIBAgIQQhrylAmEGR9SCkvGJCanSzANBgkqhkiG9w0B
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQULpAmNud1EY7qgJxWI1+U8TfO
+# sJCgghM8MIIEhDCCA2ygAwIBAgIQQhrylAmEGR9SCkvGJCanSzANBgkqhkiG9w0B
 # AQUFADBvMQswCQYDVQQGEwJTRTEUMBIGA1UEChMLQWRkVHJ1c3QgQUIxJjAkBgNV
 # BAsTHUFkZFRydXN0IEV4dGVybmFsIFRUUCBOZXR3b3JrMSIwIAYDVQQDExlBZGRU
 # cnVzdCBFeHRlcm5hbCBDQSBSb290MB4XDTA1MDYwNzA4MDkxMFoXDTIwMDUzMDEw
@@ -154,23 +309,23 @@ https://github.com/Wintellect/WintellectPowerShell
 # VQQDExhDT01PRE8gQ29kZSBTaWduaW5nIENBIDICEHF/qKkhW4DS4HFGfg8Z8PIw
 # CQYFKw4DAhoFAKB4MBgGCisGAQQBgjcCAQwxCjAIoAKAAKECgAAwGQYJKoZIhvcN
 # AQkDMQwGCisGAQQBgjcCAQQwHAYKKwYBBAGCNwIBCzEOMAwGCisGAQQBgjcCARUw
-# IwYJKoZIhvcNAQkEMRYEFDYYBTkmdlqUSJmCba2Jb7d9eNYIMA0GCSqGSIb3DQEB
-# AQUABIIBAHGbmtqS7q7waCNvKbK3WXnMHmrVd+HRkGYxrTdcYON0a68qcy0l6vxw
-# LNY2+BphQurEQ86cLx11O5EJr827weRGYYw7Y9WY+ZN76tnc5G9Ar9KEf4JybRYv
-# RmM1BXg3HIIcGalcrwL4cs2tkRCbdvFOh+kPDxCsqufQHQuGqaPqsgsDIl6/T3Xh
-# TKQ1CePATAg9qfyPF5ARLgLAaneEjmISufU4hbvWAd13O8hx3Wh2RXaNs1R93zMO
-# Esvv+xmDWkBKAbDpiycDEW2KWijl3dD0vX2+xXBD0F+Um+lXxvhMeKWlPW1yU50h
-# q4OK98nddjQz5OmOfxcn4nLkcBYiqzKhggJEMIICQAYJKoZIhvcNAQkGMYICMTCC
+# IwYJKoZIhvcNAQkEMRYEFDB3xk9gMWPM3Lk4D56jVye1MnTRMA0GCSqGSIb3DQEB
+# AQUABIIBAGxMsKhJYubowsru5DV+atMr0yx/Y5dkMxTt+6x0k15tNcsL0vGeBzfZ
+# v41mjwpsnehyYpRURq+7dAQnvoPZgyDWU58+8+gPNhysfAgeLkFmi0jj91ZNEUWz
+# ScvmmVAw3yYyFa2RkdBEIeEzFKhiJfd0OdvZXAJj1hG0FsywR4AxQbIMNjwPi4RO
+# AVeWDm1ZhIi2VTbbSAPDKmAac1Y+38V3k/zye+tsxpa+e+DIBWp2vigiVwqwpu6W
+# L3HAf0nC71GzXUyxY6q1Rjf4TjHwOGfbqnzD76uBD2ryX4mRrr8FS9079U+/oU7e
+# 4Sqap112HpTir75/PKlXuQ6tvx9DA2qhggJEMIICQAYJKoZIhvcNAQkGMYICMTCC
 # Ai0CAQAwgaowgZUxCzAJBgNVBAYTAlVTMQswCQYDVQQIEwJVVDEXMBUGA1UEBxMO
 # U2FsdCBMYWtlIENpdHkxHjAcBgNVBAoTFVRoZSBVU0VSVFJVU1QgTmV0d29yazEh
 # MB8GA1UECxMYaHR0cDovL3d3dy51c2VydHJ1c3QuY29tMR0wGwYDVQQDExRVVE4t
 # VVNFUkZpcnN0LU9iamVjdAIQR4qO+1nh2D8M4ULSoocHvjAJBgUrDgMCGgUAoF0w
-# GAYJKoZIhvcNAQkDMQsGCSqGSIb3DQEHATAcBgkqhkiG9w0BCQUxDxcNMTMxMTA4
-# MjIxMTA0WjAjBgkqhkiG9w0BCQQxFgQU2hBKfqJAj4GmLeCdrxzRBc027K4wDQYJ
-# KoZIhvcNAQEBBQAEggEATHWRxcqhKkqE4rryne2TyEHrBPdjGBMYPzVRWRFmrppz
-# ZwpKZ23ba4dtCf3CACyBOLEXE5oZFR05HTS/UP7G+ELInvtEfmp3eJcXe7/L+Vl0
-# x23IDKP+2aFoWlMqz+VdZgV8l7CjGWcaMN5sHl3Ry2M6HDUuaUxdP6QNZ6Y8jjRB
-# JVMt9vVnYWrALuvX4s1sGq5dfkB0zlvZyI9Jc2wCPmnOQxhCObBKwZqWvkHtMFkn
-# AGxOulrL1eKgzrU6HKo7/HVionERry+HvwHNzjoriGeGk5ndEMhchxf2ITNOiPV0
-# /UDgTY/Fy+4Wn7z5/WhHfSXFasZeMpJf9AAtKBWMiA==
+# GAYJKoZIhvcNAQkDMQsGCSqGSIb3DQEHATAcBgkqhkiG9w0BCQUxDxcNMTQwMzEx
+# MjI0NzE1WjAjBgkqhkiG9w0BCQQxFgQUG9xV8USQsKgWTsj/2sW3Nd2pFNgwDQYJ
+# KoZIhvcNAQEBBQAEggEAJnDLUdLx0WyaHpFwm988Fa6uwZP93LtfgtH5FRkEyQQL
+# ld0DyFJzxICBce/tEK16YA1zK5myhmN9zd1Vzv9yD5bUI/VM4EXAiJrlQ0aU13+9
+# DdWoQ4IMNTC+9DTWhLqDvyXDBwSQNDDXu4BlIljW+QXyffX+xurCb0DA1vdB0B0P
+# MI9OZ5Wb2DB03NY4WQD78fHww1u+q3Agb4bTuYLDdFuww3XrA75aOxjx7g4QSbsi
+# CcVq34qqBNzYFvC+D+rTGWSt4tCa91qXR4kbyIi4hJt5lHzpnYAtI7CSBd4V3JhS
+# gihSL5Z8rUQxBKU45tDXj3T+/zUld2KIx6sqZLOPgw==
 # SIG # End signature block

@@ -1,7 +1,7 @@
 #requires -version 2.0
 ###############################################################################
 # WintellectPowerShell Module
-# Copyright (c) 2010-2013 - John Robbins/Wintellect
+# Copyright (c) 2010-2014 - John Robbins/Wintellect
 # 
 # Do whatever you want with this module, but please do give credit.
 ###############################################################################
@@ -13,190 +13,62 @@ Set-StrictMode -version Latest
 ###############################################################################
 # Public Cmdlets
 ###############################################################################
-function Get-Hash
+function Test-PathReg
 {
 <#
 .SYNOPSIS
-Returns the cryptographic hash of a file or string.
+Validates the existence of a registry key
 
 .DESCRIPTION
-This cmdlet accepts either files or strings and will return the cryptographic 
-hash. You may choose the cryptographic provider, and in the case of strings the
-encoding.
-
-Files may be passed through the pipeline. If an item passed in is not a file, 
-specifically a FileInfo type, it will be treated as a string. Note this means 
-directories are not enumerated, but the directory name hash will be calculated.
+This function searches for the registry value (Property attribute) under the 
+given registry key (Path attribute) and returns $true if it exists.
+Author: Can Dedeoglu (Thanks Can!)
 
 .PARAMETER Path
-The array of files to calculate hashes for.
+Specifies the Registry path.
 
-.PARAMETER LiteralPath
-Specifies a path to the file. Unlike Path, the value of LiteralPath is used 
-exactly as it is typed. No characters are interpreted as wildcards. If the path 
-includes escape characters, enclose it in single quotation marks.
-
-.PARAMETER HashType
-The cryptographic hash algorithm to use. This parameter can only be one of the 
-following: SHA1, MD5, SHA256, SHA384, or SHA512.
-
-.PARAMETER Encoding
-When passing strings into Get-Hash you may need to specify the string encoding. 
-This parameter can only be one of the following: ASCII, BigEndianUnicode, 
-Default, Unicode, UTF32, UTF7, or UTF8.
-
-.INPUTS 
-File or String
-The file or string to calculate the hash.
-
-.OUTPUTS 
-String
-The cryptographic hash of the input item.
-
-.NOTES
-This function was influenced by Bill Stewart's Get-FileHash: 
-http://www.windowsitpro.com/article/scripting/calculate-file-hashes-powershell-139518
+.PARAMETER Property
+Specifies the name of the registry property that will be searched for under the
+given Registry path.
 
 .EXAMPLE
-C:\PS>get-hash c:\foo\bar.ps1
-    
-Gets the cryptographic hash of the file c:\foo\bar.ps1
-    
-7D03C594BE2AA6CD1E2683ADF99BF89F
-    
-.EXAMPLE
-C:\PS>dir *.p*1 | Get-Hash
-    
-Pipe in all files matching the wildcard *.p*1 and show their cryptographic hash.
-    
-7D03C594BE2AA6CD1E2683ADF99BF89F
-5EACBB36CF72AAFD24E5A5DCE17BED20
-B86207D455D3330B851A10A6F7B4E5B9
+C:\PS> Test-PathReg -Path HKLM:\SYSTEM\CurrentControlSet\services\Tcpip\Parameters -Property Hostname
 
-.EXAMPLE
-C:\PS>"Now is the time for all good men..." | Get-Hash -HashType SHA256
-
-Shows piping in a string to Get-Hash to calculate it's SHA256 hash.
-        
-A3499FF85214D8A1B2FB28A71B6D8885BB1D296D4DB6624B51580D12EBB7CEC0
+Checks to see if the Hostname property exists in the HKLM:\SYSTEM\CurrentControlSet\services\Tcpip\Parameters registry key
 
 .LINK
-http://www.wintellect.com/blogs/jrobbins
-https://github.com/Wintellect/WintellectPowerShell
+http://blogs.msdn.com/candede
 
 #>
+    param (
+        [Parameter(mandatory=$true,position=0)]
+        [string]$Path,
+        [Parameter(mandatory=$true,position=1)]
+        [string]$Property )
 
-# Influenced by Bill Stewart: http://www.windowsitpro.com/article/scripting/calculate-file-hashes-powershell-139518
-    [CmdletBinding(DefaultParameterSetName = "Path")] 
-    param( 
-    [Parameter(ParameterSetName="Path",
-               Position = 0,
-               Mandatory = $true,
-               ValueFromPipeline = $true,
-               ValueFromPipelineByPropertyName = $true)] 
-    [String[]] $Path, 
-    
-    [Parameter(ParameterSetName = "LiteralPath",
-               Position = 0,
-               Mandatory = $true)] 
-    [String[]] $LiteralPath, 
-    
-    [Parameter(Position = 1)] 
-    [ValidateSet("SHA1","MD5","SHA256","SHA384","SHA512")]
-    [String] $HashType = "MD5", 
 
-    [Parameter(Position=2)]
-    [ValidateSet("ASCII","BigEndianUnicode","Default","Unicode","UTF32","UTF7","UTF8")]
-    [String] $Encoding = "Default"
-
-    ) 
-
-    begin
+    $compare = (Get-ItemProperty -LiteralPath $Path).psbase.members | `
+                    %{$_.name} | `
+                    compare $Property -IncludeEqual -ExcludeDifferent
+    if($compare -eq $null)
     {
-        if ($PSCMDLET.ParameterSetName -eq "Path") 
-        { 
-            $PipeLineInput = -not $PSBOUNDPARAMETERS.ContainsKey("Path")
-        } 
-
-        $cryptoAlgo = [System.Security.Cryptography.HashAlgorithm]::Create($HashType)
-
-        function GetEncoding()
-        {
-            switch($Encoding)
-            {
-                "ASCII" { return [System.Text.Encoding]::ASCII }
-                "BigEndianUnicode" { return [System.Text.Encoding]::BigEndianUnicode }
-                "Default" { return [System.Text.Encoding]::Default }
-                "Unicode" { return [System.Text.Encoding]::Unicode }
-                "UTF32" { return [System.Text.Encoding]::UTF32 }
-                "UTF7" { return [System.Text.Encoding]::UTF7 }
-                "UTF8" { return [System.Text.Encoding]::UTF8 }
-            }
-        }
-
-        function DoHash($val)
-        {
-            $sb = New-Object System.Text.StringBuilder
-
-            if ($val -is [System.IO.FileInfo])
-            {
-                $stream = [System.IO.File]::OpenRead($val.FullName)
-
-                try
-                {
-                    $cryptoAlgo.ComputeHash($stream) | ForEach-Object { [void]$sb.Append($_.ToString("X2")) }
-                }
-                finally
-                {
-                    if ($stream -ne $null)
-                    {
-                        $stream.Close()
-                    }
-                }
-
-            }
-            else
-            {
-                # Treat it at a string.
-                [string]$stringVal = $val
-                $enc = GetEncoding
-                $bytes = $enc.GetBytes($stringVal)
-
-                $cryptoAlgo.ComputeHash($bytes) | ForEach-Object { [void]$sb.Append($_.ToString("X2")) }
-            
-            }
-            $sb.ToString();
-        }
+        return $false
     }
-    process
+    if($compare.SideIndicator -like "==") 
     {
-        if ($PSCMDLET.ParameterSetName -eq "Path") 
-        { 
-            if ($PipeLineInput) 
-            {
-                DoHash $_
-            }
-            else
-            {
-                get-item $Path -force | foreach-object { DoHash $_ } 
-            } 
-        }
-        else
-        {
-            $file = get-item -literalpath $LiteralPath 
-            if ($file) 
-            {
-                DoHash $file
-            }
-        }
+        return $true
+    }
+    else
+    {
+        return $false
     }
 }
 
 # SIG # Begin signature block
 # MIIYSwYJKoZIhvcNAQcCoIIYPDCCGDgCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUbZQgoqfyeHjZV1bPzJOg7rJD
-# n9+gghM8MIIEhDCCA2ygAwIBAgIQQhrylAmEGR9SCkvGJCanSzANBgkqhkiG9w0B
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUq2J3QZ8f2NLm1LRyHnYG/ILG
+# TxagghM8MIIEhDCCA2ygAwIBAgIQQhrylAmEGR9SCkvGJCanSzANBgkqhkiG9w0B
 # AQUFADBvMQswCQYDVQQGEwJTRTEUMBIGA1UEChMLQWRkVHJ1c3QgQUIxJjAkBgNV
 # BAsTHUFkZFRydXN0IEV4dGVybmFsIFRUUCBOZXR3b3JrMSIwIAYDVQQDExlBZGRU
 # cnVzdCBFeHRlcm5hbCBDQSBSb290MB4XDTA1MDYwNzA4MDkxMFoXDTIwMDUzMDEw
@@ -304,23 +176,23 @@ https://github.com/Wintellect/WintellectPowerShell
 # VQQDExhDT01PRE8gQ29kZSBTaWduaW5nIENBIDICEHF/qKkhW4DS4HFGfg8Z8PIw
 # CQYFKw4DAhoFAKB4MBgGCisGAQQBgjcCAQwxCjAIoAKAAKECgAAwGQYJKoZIhvcN
 # AQkDMQwGCisGAQQBgjcCAQQwHAYKKwYBBAGCNwIBCzEOMAwGCisGAQQBgjcCARUw
-# IwYJKoZIhvcNAQkEMRYEFPQoQf7ohibDu4QUMYNc8MRZ4NZDMA0GCSqGSIb3DQEB
-# AQUABIIBAIsvuBGo9vTBeNMFftE9+46y69DU0KQgaduba4eSisoKQXFOBMEa+XxV
-# LDpWeDX2j+z3D8mtiKYC5Eqc/nKjcW20czRlQp6Hu1aQCYRcWpN2CPlMJb5vGywP
-# jJ5CwZNuNg9+jG4N0gGdl3Y5M0/dcZUvIhbk2UBACNqX6lE4oydIILrzOSXjn4PE
-# nmAsIHKEW46f/pf6qRE6LmtsADKOOisNxc9CJ3uED38LytV3MplXv3xK+B2rdHSY
-# 3KCl+B0Ct3D26+V2mhmUce+VO8Nn9SshGFt6uyAir2ZKzLl3JmUVWDJUK3emPS1L
-# Nz/9qLeUsw8s88xpxKJ/TPX155TDzq+hggJEMIICQAYJKoZIhvcNAQkGMYICMTCC
+# IwYJKoZIhvcNAQkEMRYEFBA5k8xslYHL6rZ2OyPQ6kWmPqTrMA0GCSqGSIb3DQEB
+# AQUABIIBABzMqadq9ylIe/RwFPAgSGvPokO2eG5Uf5Y1g/3+9dj132AZno6uWqoB
+# 4KujbdgGqFKcr6xCVUKgPoFmda99H+qKf7Cks/pM4O1kycAMcMqLMHmsPQU2KXgt
+# JyE5EEbO5omsxXWMwa3p5DdfnBCNd/ypL0XzYBGGDjRMgbr704jQcUSBLMj00fV7
+# fh33JIU1msxcTfgMN17yjyAya9wWoM24ege7BAwMe2wDa6dKoWQw5q34z34h8fOn
+# FMm2bkHbs5eS1E5Dt3BksjzysmduQZXny7miGM5axp/G5UEaIb2QlF9Ba7b4wc41
+# +ROBCcuZyBwytvT6s9RW/0nW5J5uZhmhggJEMIICQAYJKoZIhvcNAQkGMYICMTCC
 # Ai0CAQAwgaowgZUxCzAJBgNVBAYTAlVTMQswCQYDVQQIEwJVVDEXMBUGA1UEBxMO
 # U2FsdCBMYWtlIENpdHkxHjAcBgNVBAoTFVRoZSBVU0VSVFJVU1QgTmV0d29yazEh
 # MB8GA1UECxMYaHR0cDovL3d3dy51c2VydHJ1c3QuY29tMR0wGwYDVQQDExRVVE4t
 # VVNFUkZpcnN0LU9iamVjdAIQR4qO+1nh2D8M4ULSoocHvjAJBgUrDgMCGgUAoF0w
 # GAYJKoZIhvcNAQkDMQsGCSqGSIb3DQEHATAcBgkqhkiG9w0BCQUxDxcNMTMxMTA4
-# MjIxMTAzWjAjBgkqhkiG9w0BCQQxFgQU73g+umuTmehE1SPS/d1CEW6qpOwwDQYJ
-# KoZIhvcNAQEBBQAEggEATiTMHNiyfvdeyeOzXcRMciH4Y4tPHGJ0e7WxUNnG+YVR
-# ldvvqr9drdeH5C0wsPUKx82+j82jyjDUiwjah1Zwx6u2BftOQvmdWKWY5iSB4G63
-# 5VvTy34mZ/nLqfPAFxyhA5KERqqwhqrArN0riDrvSrDqo/S11yny9OkVsXsyXONm
-# X7ZSKd7UKYEwKxibnUNfoUf7azH7eM8YdXC12/jN5fRDuerdTRSY6euTY48NCCC/
-# DrpeE4mCFdpYShxYyTdPfA1TTFjwMrjdlE3wqi4Ugu/EsG/fJYdfPo5CfxlAFA92
-# g2yS/lUs+I42daocTTYPZJZHhMuPJhOGXY0VbVYNuA==
+# MjIxMTA1WjAjBgkqhkiG9w0BCQQxFgQUkvi9MC5WrhymB1eamITxbvyk7VkwDQYJ
+# KoZIhvcNAQEBBQAEggEAD33rqmyMzFvU0hST64dmCBbk/L7tvjX3BEFYWawNJ5Ir
+# myRl/WvR/DmxK3mDRfTIMYhCtqd2Q5X/eUvb8wBa7zC3yv7wH2krkzIwvmYXQzKi
+# 6yeWKgU91xLy3gRIY/j9y/Y3eaYGJzYTvfEVMnFR40vpgsQNqd8z8IGgNkwiCWkF
+# YaYPiRpZOLcKNDPHFlagnN0tj5Y5iGzo5nrx3bwoQyuOufP4L7OUSLVcWEq7Csi8
+# 4KbX309qXuWshSAjWmgw5gFVFt8GBSianbzf15S6ZGOtimwFVMHpsHCvZNbflt2j
+# lTV5qVU16whJlaLRDtaq6tZZHP0qFRHocwE+EAXZhg==
 # SIG # End signature block

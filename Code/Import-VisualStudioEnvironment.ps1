@@ -1,7 +1,7 @@
 ﻿#requires -version 2.0
 ###############################################################################
 # WintellectPowerShell Module
-# Copyright (c) 2013 - John Robbins/Wintellect
+# Copyright (c) 2010-2014 - John Robbins/Wintellect
 # 
 # Do whatever you want with this module, but please do give credit.
 ###############################################################################
@@ -13,209 +13,109 @@ Set-StrictMode -version Latest
 ###############################################################################
 # Public Cmdlets
 ###############################################################################
-function Add-NgenPdbs
+function Import-VisualStudioEnvironment
 {
 <#
 .SYNOPSIS
-Create PDB files for NGEN'd images on a machine.
+Sets up the current PowerShell instance with the Visual Studio environment
+variables so you can use those tools at the command line.
 
 .DESCRIPTION
-When running the Visual Studio profiler on Windows 8 or Windows Server 2012, 
-you need the PDB files for any binaries that have been NGEN'd and put in the GAC 
-so you can see the calls into those binaries. Fortunately NGEN.EXE can generate 
-the PDB files after the fact and this script automates the process for so you
-don't have to run NGEN on each binary.
+Command line usage is the way to go, but Visual Studio requires numerous 
+environment variables set in order to properly work. Since those are controlled
+by the vcvarsall.bat cmd script, it's a pain to get working. This script
+does the work of calling the specific vscarsall.bat file for the specific version
+of Visual Studio you want to use.
 
-Because each machine has it's own unique NGEN'd files, you will have to run this
-script on the machine you are collecting the performance runs. After creating
-the PDB files, you'll have to copy them into your symbol server on the machine
-where you are analyzing the performance runs. 
+This implementation uses the registry to look up the installed Visual Studio 
+versions and does not rely on any preset environment variables such as 
+VS110COMNTOOLS. 
 
-.PARAMETER CacheDirectory
-The cache directory to place the resulting PDB files. If not specified, looks
-at the Visual Studio 2012/2013 symbol settings and uses that as the cache 
-directory.
+.PARAMETER VSVersion
+The version of Visual Studio you want to use. If left to the default, Latest, the
+script will look for the latest version of Visual Studio installed on the computer
+as the tools to use. Specify 2008, 2010, 2012, 2013, or 2015 for a specific version.
 
-On a machine without Visual Studio where you are using the command line profiling
-tools, alway specify this parameter.
-
-.PARAMETER DoAllGACFiles
-By default, this command only does the NGEN'd binaries that are in the .NET 
-framework directories for both x86 and x64. If you need other NGEN'd binaries
-from 3rd pary tools, specify this switch. Some NGEN'd binaries, but not from the .NET 
-framework, will report errors when attempting to build their PDB files.
-
-.PARAMETER Quiet
-Because it can take a long while for this function to produce all the PDB files
-it reports the assembly being processed. If this is annoying to you, specifing 
--Quiet will turn off that output. Any warnings about PDB creation will still be
-reported.
-
-.NOTES
-To read more about using NGEN to produce PDB files after a binary has been precompiled
-see this article: http://blogs.msdn.com/b/visualstudioalm/archive/2012/12/10/creating-ngen-pdbs-for-profiling-reports.aspx
-
-For an alternative implementation to this one, see 
-http://knagis.miga.lv/blog/post/2013/01/22/VS2012-Windows-8-profilesana-ar-NGEN-bibliotekam.aspx
+.PARAMETER Architecture
+The tools architecture to use. This defaults to the $env:PROCESSOR_ARCHITECTURE 
+environment variable so x86 and x64 are automatically handled. The valid architecture 
+values are x86, amd64, x64, arm, x86_arm, and x86_amd64.
 
 .LINK
 http://www.wintellect.com/blogs/jrobbins
 https://github.com/Wintellect/WintellectPowerShell
 
 #>
-    param 
+
+    param
     (
-        [string]$CacheDirectory = "",
-        [switch]$DoAllGACFiles,
-        [switch]$Quiet
-    )
+        [Parameter(Position=0)]
+        [ValidateSet("Latest", "2008", "2010", "2012", "2013", "2015")]
+        [string] $VSVersion = "Latest", 
+        [Parameter(Position=1)]
+        [ValidateSet("x86", "amd64", "x64", "arm", "x86_arm", "x86_amd64")]
+        [string] $Architecture = ($Env:PROCESSOR_ARCHITECTURE)
+    )  
 
-    # If the CacheDirectory is empty, use the symbol path directory.
-    if ($CacheDirectory.Length -eq 0)
+    $versionSearchKey = "HKLM:\SOFTWARE\Wow6432Node\Microsoft\VisualStudio\SxS\VS7"
+    if ([IntPtr]::size -ne 8)
     {
-        # I have to look for the cache directory. First I'll start with the easy checks
-        # by using Get-SymbolServer to pull out the VS versions. As a last resort, I have
-        # to try and grab it from the _NT_SYMBOL_PATH environment variable.
-        $symServs = Get-SymbolServer
-        if ($symServs.Count -eq 0)
-        {
-            throw "You don't have a symbol server set"
-        }
+        $versionSearchKey = "HKLM:\SOFTWARE\Microsoft\VisualStudio\SxS\VS7"    
+    }
 
-        $vsVersion = $null
-        $symPath = $symServs["VS 2013"]
-        if ($symPath -eq $null)
-        {
-            $symPath = $symServs["VS 2012"]
-            if ($symPath -eq $null)
-            {
-                # Pull it out of _NT_SYMBOL_PATH. Yes this is only looking at the
-                # first cache directory specified.
-                $symPath = $symServs["_NT_SYMBOL_PATH"]
-                if ($symPath -eq $null)
-                {
-                    throw "No symbol server configured"
-                }
-                else
-                {
-                    if ($symPath -match "SRV\*(?<SymCache>[^*]*)\*(?:.*)\;?")
-                    {
-                        $symPath = $Matches["SymCache"]
-                    }
-                    else
-                    {
-                        throw "_NT_SYMBOL_PATH environment variable does not specify a symbol cache"
-                    }
-                }
-            }
-            else
-            {
-                $vsVersion = "11.0"
-            }
-        }
-        else
-        {
-            $vsVersion = "12.0"
-        }
+    $vsDirectory = ""
 
-        if ($vsVersion -ne $null)
-        {
-            # If using the public symbol servers I have to put PublicSymbols on the path.
-            if ((Get-ItemProperty -Path "HKCU:\Software\Microsoft\VisualStudio\$vsVersion\Debugger").SymbolUseMSSymbolServers -eq 1)
-            {
-                $SymPath = Join-Path -Path $symPath -ChildPath "PublicSymbols"
-            }
-        }
-
-        if ($symPath.Length -eq 0)
-        {
-            throw "The symbol path is empty"
-        }
-
-        $CacheDirectory = $symPath
+    if ($VSVersion -eq 'Latest')
+    {
+        # Find the largest number in the install lookup directory and that will
+        # be the latest version.
+        $biggest = 0.0
+        Get-RegistryKeyPropertiesAndValues $versionSearchKey  | 
+            ForEach-Object { 
+                                if ([System.Convert]::ToDecimal($_.Property) -gt [System.Convert]::ToDecimal($biggest))
+                                {
+                                    $biggest = $_.Property
+                                    $vsDirectory = $_.Value 
+                                }
+                            }  
     }
     else
     {
-        if (-not (Test-Path -Path $CacheDirectory))
+        $propVal = switch($VSVersion)
+                    {
+                        "2008" { "9.0" }
+                        "2010" { "10.0" }
+                        "2012" { "11.0" }
+                        "2013" { "12.0" }
+                        "2015" { "14.0" }
+                        default { throw "Unknown version of Visual Studio!" }
+                    }
+        if (Test-PathReg -Path $versionSearchKey -Property $propVal)
         {
-            New-Item -Path $CacheDirectory -Type Directory | Out-Null
+            $vsDirectory = (Get-ItemProperty -Path $versionSearchKey -WarningAction SilentlyContinue).$propVal
+        }
+        else
+        {
+            $vsDirectory = $null
         }
     }
 
-    # Get all the *.ni.dll files out of the 4.* GAC locations
-    $gacSearchPath = $env:windir + "\assembly\NativeImages_v4*"
-    $files = Get-ChildItem -Recurse -Path $gacSearchPath -Filter "*.ni.dll" -Exclude "*.resources.ni.dll"
-
-    # I'll need this later to strip off the .ni.dll
-    $niLength = ".ni.dll".Length
-
-    foreach ($f in $files)
+    if ([String]::IsNullOrEmpty($vsDirectory))
     {
-        # Build up the command line to call NGEN.EXE on this binary.
-        # Get the name of the DLL.
-        $baseName = (Split-Path -Path $f -Leaf)
-        $baseName = $baseName.SubString(0, $baseName.Length - $niLength)
+        throw "The requested Visual Studio version is not installed"
+    }  
 
-        # Extract out the bit version of this compiled binary so I know if I'm supposed
-        # to run the 32 or 64 bit version of NGEN.EXE and where to check if the file exists.
-        # The replace looks weird but that's how you get \\ into the path. :)
-        $pattern = $env:windir -replace '\\' , '\\'
-        $pattern += "\\assembly\\NativeImages_(?<version>v4\.\d\.\d\d\d\d\d)_(?<bits>\d\d)"
-        $f.FullName -match $pattern | Out-Null
-
-        $bits = '64'
-        if ($Matches.bits -eq '32')
-        {
-            $bits = ''
-        }
-
-        $fwVersion = $Matches.version
- 
-        # if doing the default of only framework files, check to see if this
-        # file is in the appropriate directory.
-        if ($DoAllGACFiles.IsPresent -eq $false)
-        {
-            # Build up the framework path.
-            $fwPath = Join-Path -Path $env:windir -ChildPath "Microsoft.NET"
-            $fwPath = Join-Path -Path $fwPath -ChildPath ("Framework" + $bits)
-            $fwPath = Join-Path -Path $fwPath -ChildPath $fwVersion
-
-            $fwFile = Get-ChildItem -Recurse -Path $fwPath -Filter ($baseName + ".dll")
-            if ($fwFile -eq $null)
-            {
-                continue 
-            }
-
-        }
-
-        if ($Quiet.IsPresent -eq $false)
-        {
-            $msgBitness = '(x86)'
-            if ($bits -eq "64")
-            {
-                $msgBitness = "(x64)"
-            }
-            Write-Host -Object "Generating PDB file for $msgBitness $baseName.dll"
-        }
-        
-        $ngenCmd = $env:windir + "\Microsoft.NET\Framework" + $bits + "\" + $fwVersion + "\NGEN.EXE" + ' createPDB ' + '"' + $f.FullName + '"' + ' "' + $CacheDirectory +'"'
-
-        $outputData = Invoke-Expression $ngenCmd
-
-        if ($LASTEXITCODE -ne 0)
-        {
-            # This may look odd, but it's because Write-Warning is too dumb to write arrays.
-            Write-Warning -Object ([String]::Join("`n", $outputData))
-        }
-    }
+    # Got the VS directory, now setup to make the call.
+    Invoke-CmdScript -script "$vsDirectory\vc\vcvarsall.bat" -parameters "$Architecture"
 }
 
 
+###############################################################################
 # SIG # Begin signature block
 # MIIYSwYJKoZIhvcNAQcCoIIYPDCCGDgCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUM0zTGE40n2XUE8P+h/FN39sC
-# iZOgghM8MIIEhDCCA2ygAwIBAgIQQhrylAmEGR9SCkvGJCanSzANBgkqhkiG9w0B
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUkaASTBqLMX21bTb6x44BOety
+# MoGgghM8MIIEhDCCA2ygAwIBAgIQQhrylAmEGR9SCkvGJCanSzANBgkqhkiG9w0B
 # AQUFADBvMQswCQYDVQQGEwJTRTEUMBIGA1UEChMLQWRkVHJ1c3QgQUIxJjAkBgNV
 # BAsTHUFkZFRydXN0IEV4dGVybmFsIFRUUCBOZXR3b3JrMSIwIAYDVQQDExlBZGRU
 # cnVzdCBFeHRlcm5hbCBDQSBSb290MB4XDTA1MDYwNzA4MDkxMFoXDTIwMDUzMDEw
@@ -323,23 +223,23 @@ https://github.com/Wintellect/WintellectPowerShell
 # VQQDExhDT01PRE8gQ29kZSBTaWduaW5nIENBIDICEHF/qKkhW4DS4HFGfg8Z8PIw
 # CQYFKw4DAhoFAKB4MBgGCisGAQQBgjcCAQwxCjAIoAKAAKECgAAwGQYJKoZIhvcN
 # AQkDMQwGCisGAQQBgjcCAQQwHAYKKwYBBAGCNwIBCzEOMAwGCisGAQQBgjcCARUw
-# IwYJKoZIhvcNAQkEMRYEFDISa2wWM0d0aO9Qs8EKKtvjb0c5MA0GCSqGSIb3DQEB
-# AQUABIIBAEIhrIut4sBmPYdM1E+MCqzsZVz1ZEJ3EGSuki15bVXKNrJKJTJS6OwO
-# w0w2A0eAoJcnJBjmmrqy95cumBF3PybvULPnL5OPCtBkKz3DAqI4j3uvcdILmq9W
-# WAvlA0jI2qlCQHC+WaWDwfcQ2JGACA7v165PSiFd+H90jQep8XBIvv3FGRPzxgc6
-# dsXg3/mll4xbkCtZElPdi/kCAotbu30hxrM/XnR6VVyphVj7ANJaQluaHFdfb/l5
-# xKAb54GNxEr7gR0hIj7RjzMeGT+hbxbCUWgW3IttIDK5n6aRHhhLUSpric2Bsh79
-# SRHpBBQF0GVnrCsEK0Gomy/0wWO6RhGhggJEMIICQAYJKoZIhvcNAQkGMYICMTCC
+# IwYJKoZIhvcNAQkEMRYEFMWqZ/bQ/jF5m8zo9yQPGJqQL3V3MA0GCSqGSIb3DQEB
+# AQUABIIBAKaMI/gAx9Xd5vtQo83BR6m4ABjx3yKVTFftgCX+kI7gP4hHC2kfEDOK
+# S0Ld/JXjN7lL+NUy1tk7O+xynB2juR6ObIY9IZb6miGFxCZWhoLI823bCkK6idEk
+# 3rB0/XtV7YCbK98AxnxioMa3X18wPr3MFyKw5dRIelURVib/qZtrHu1SrVQK5rST
+# kINEynFgKd3vJN/RiJZYbQDbbCjzbx7jL4Cj2udeoJWCz8kalM3ypjRxHELNd4An
+# JIsC0ihs2yVXH7ypmMpGiSZPKjc0MIBO9l2HRMyFtLwv7JaJZCa/cTncOz1AZ5Eb
+# 3gTMDUyhGvtxl/oPga5AZXYVXT0VRzChggJEMIICQAYJKoZIhvcNAQkGMYICMTCC
 # Ai0CAQAwgaowgZUxCzAJBgNVBAYTAlVTMQswCQYDVQQIEwJVVDEXMBUGA1UEBxMO
 # U2FsdCBMYWtlIENpdHkxHjAcBgNVBAoTFVRoZSBVU0VSVFJVU1QgTmV0d29yazEh
 # MB8GA1UECxMYaHR0cDovL3d3dy51c2VydHJ1c3QuY29tMR0wGwYDVQQDExRVVE4t
 # VVNFUkZpcnN0LU9iamVjdAIQR4qO+1nh2D8M4ULSoocHvjAJBgUrDgMCGgUAoF0w
-# GAYJKoZIhvcNAQkDMQsGCSqGSIb3DQEHATAcBgkqhkiG9w0BCQUxDxcNMTQwNzEw
-# MDU1MDU2WjAjBgkqhkiG9w0BCQQxFgQUuuFBw1HL3LrX6R1Y3j/5rNgqTkcwDQYJ
-# KoZIhvcNAQEBBQAEggEAHMH5p3M0k8zq7lZlJHSBs5NdV62KscDbjiSUoH5lq/0S
-# 79EkWyb9PpLAY1LcQ35KC5zNa7DcvztjJWnaZFRihLyFElr6zrV70IZ0cTgoJwpu
-# y4FW2Z0y5yj11QupbHYlnnt6G8FIu431RGNreMhv5qLZNDSLwjOYK7xncIN49UDp
-# LhXYSCxLnKMoA92YXED2lXBT+oJxr4X93DzNhjXlMo6T0de8J0hkfcp2bW18FxpR
-# NFsYKSZ4ywlFUPNpRk1L+vBiNGCOdO2ydqEn1mwfWERxhCN/inuotbGSA34ZEInZ
-# Odsj8Sp3+unmWLjmWVqsaiDnVwOj1UXzSdPsxv7NHA==
+# GAYJKoZIhvcNAQkDMQsGCSqGSIb3DQEHATAcBgkqhkiG9w0BCQUxDxcNMTMxMTA4
+# MjIxMTA0WjAjBgkqhkiG9w0BCQQxFgQUZLmkdBQOze5yom4x4uBiZ6ypUzEwDQYJ
+# KoZIhvcNAQEBBQAEggEAZO/QVDn5a+GfL3v2ik+TBTOUPukvsYUZpbuniNAhjgPO
+# M2nmNM5/NbMxeBuhvHXXR8HUilb0bG6BwscOA5tAmu+8zN5oDFYnzhF+zMSF38cW
+# hB6By2AYWW37yhycLlRiCzNDwvtuRRhWFlkxJEYtQMfQYYBk8/F/WzgpyGrcvLhF
+# dn9bzxKdu5cDp3HjEeF++0EwbIagK2ZDNbijBap81MP/yg8JUrWtELL0tMDvB8Go
+# 4r1nGJAsms8eJhxACtkeCd55NmRrOmBfAX4rPCWylhc+X3yEc3eEGIdyD0kuNlHY
+# 8yg0Hyqn8fWS3+1zscFDI403634O4SLyQVw/NtXuDQ==
 # SIG # End signature block

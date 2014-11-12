@@ -1,7 +1,7 @@
 #requires -version 2.0
 ###############################################################################
 # WintellectPowerShell Module
-# Copyright (c) 2010-2013 - John Robbins/Wintellect
+# Copyright (c) 2010-2014 - John Robbins/Wintellect
 # 
 # Do whatever you want with this module, but please do give credit.
 ###############################################################################
@@ -13,100 +13,40 @@ Set-StrictMode -version Latest
 ###############################################################################
 # Public Cmdlets
 ###############################################################################
-function Remove-IntelliTraceFiles
+function Get-Uptime
 {
 <#
 .SYNOPSIS
-Removes extra IntelliTrace files that may have been left over from your 
-debugging sessions.
+Returns how long a computer has been running.
 
 .DESCRIPTION
-Best practice with day to day debugging with IntelliTrace is to have the 
-debugger store the IntelliTrace files. This is important because you will gain 
-the ability to open the files after debugging. This option is not on by default, 
-but can be turned on by going to the VS Options dialog, IntelliTrace, Advanced 
-property page and checking "Store IntelliTrace recordings in this directory." 
+Returns the TimeSpan for how long a computer is running. If you'd like it 
+formatted you can use: (Get-Uptime) -f {0}
 
-Once you have your IntelliTrace files being saved you have a small issue that 
-VS does not always properly clean up the files after shutting down. This 
-cmdlet checks to see if you are storing the files and if you are, deletes any 
-files found in the storage directory. Since IntelliTrace files can take up a 
-lot of disk space, it's good to clean out that directory every once in a while.
+.PARAMETER computerName
+The default is the current computer but you can specify a different computer 
+instead.
 
-By default, this script works with Visual Studio 2010, 2012, and 2013 with the
-default being VS 2013.
-
-.PARAMETER VSVersion
-Removes the stored IntelliTrace files for VS 2013 by default, specify VS 2010 or VS 2012
-for those versions.
+.OUTPUTS
+A TimeSpan type.
 
 .LINK
 http://www.wintellect.com/blogs/jrobbins
 https://github.com/Wintellect/WintellectPowerShell
 
 #>
-    [CmdLetBinding(SupportsShouldProcess=$true)]
-    param ( 
-            [ValidateSet("VS2010", "VS2012", "VS2013")]
-            [string] $VSVersion = "VS2013"
-          )
+    param( [string] $computerName = ".")
 
-    # First check if VS is running. If so, we can't continue as it may be using
-    # the .iTrace files.
-    $proc = Get-Process devenv -ErrorAction SilentlyContinue
-    if ($proc -ne $null)
-    {
-        throw "Visual Studio is running. Please close all instances."
-    }
-
-    
-    # Default to VS 2013.
-    $vsNumber = "12.0"
-    if ($VSVersion -eq "VS2010")
-    {
-        $vsNumber = "10.0"
-    }
-    elseif ($VSVersion -eq "VS2012")
-    {
-        $vsNumber = "11.0"
-    }
-
-    $regKey = "HKCU:\Software\Microsoft\VisualStudio\" + 
-              $vsNumber + 
-              "\DialogPage\Microsoft.VisualStudio.TraceLogPackage.ToolsOptionAdvanced"
-
-    # Check to see if the user has set the options to save files. If not bail out.
-    if ( ((Test-PathReg $regKey "SaveRecordings") -eq $false) -or ((Get-ItemProperty $regKey).SaveRecordings -eq "False"))
-    {
-        throw "You have not configured IntelliTrace to save recordings. " +
-              "In the Options dialog, IntelliTtrace Advanced page, check the " +
-              "Store IntelliTrace recordings in this directory check box."
-    }
-    
-    $storageDir = ""
-    if ((Test-PathReg $regKey "RecordingPath") -ne $false)
-    {
-        # Get the storage directory for those files.
-        $storageDir = (Get-ItemProperty $regKey).RecordingPath
-    }
-
-    if ($storageDir.Length -eq 0)
-    {
-        throw "The IntelliTrace recording directory is empty. Check the " +
-              "Options dialog, IntelliTrace Advanced page to set the "+
-              "directory."
-    }
-
-    # Clean up those files but only do the ones in the main directory so if the
-    # user may have created paths and put other files there we don't delete those.
-    Get-ChildItem -Path $storageDir -Filter "*.iTrace" | Remove-Item -Force
+    $wmi = Get-WmiObject -class Win32_OperatingSystem -computer $computerName
+    $LBTime=$wmi.ConvertToDateTime($wmi.Lastbootuptime)
+    New-TimeSpan -Start $LBTime -End $(get-date)
 }
 
 # SIG # Begin signature block
 # MIIYSwYJKoZIhvcNAQcCoIIYPDCCGDgCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUSr1epXv6wodOBIqie9p2CPfr
-# NmWgghM8MIIEhDCCA2ygAwIBAgIQQhrylAmEGR9SCkvGJCanSzANBgkqhkiG9w0B
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUUdpps7Ko5EzLYjSn0ATviBYM
+# bc+gghM8MIIEhDCCA2ygAwIBAgIQQhrylAmEGR9SCkvGJCanSzANBgkqhkiG9w0B
 # AQUFADBvMQswCQYDVQQGEwJTRTEUMBIGA1UEChMLQWRkVHJ1c3QgQUIxJjAkBgNV
 # BAsTHUFkZFRydXN0IEV4dGVybmFsIFRUUCBOZXR3b3JrMSIwIAYDVQQDExlBZGRU
 # cnVzdCBFeHRlcm5hbCBDQSBSb290MB4XDTA1MDYwNzA4MDkxMFoXDTIwMDUzMDEw
@@ -214,23 +154,23 @@ https://github.com/Wintellect/WintellectPowerShell
 # VQQDExhDT01PRE8gQ29kZSBTaWduaW5nIENBIDICEHF/qKkhW4DS4HFGfg8Z8PIw
 # CQYFKw4DAhoFAKB4MBgGCisGAQQBgjcCAQwxCjAIoAKAAKECgAAwGQYJKoZIhvcN
 # AQkDMQwGCisGAQQBgjcCAQQwHAYKKwYBBAGCNwIBCzEOMAwGCisGAQQBgjcCARUw
-# IwYJKoZIhvcNAQkEMRYEFJ3Bp0kCB6bJ8+47I0aAjD0ESltTMA0GCSqGSIb3DQEB
-# AQUABIIBAEv1MMBlDy9hnCwRY2F6hvy6RKmtk7/WQjoWZnHxPL7TXTFUggBxEWK5
-# SAPZfQ0UkVdRBmTToSlzWRKYdrALtYUO9bVpkKeJl/kAx3JwYO3lsuytAig7Kv9v
-# DWuhip4KI9HPC0YB4ZxlNtYYhISHWx3MRS2knZG+hicDR2NZCYTksT5xjoYg+pId
-# akaRcAYlUj1paVotvbL9qgEilMCqE7/l58IfUclwubLfx+Ae/A0YIF2ORdhVYjEy
-# caQNSM3T5h10xc/RHMSslyEK05iinyRWxnWuk2av3vA9U2tpmq91KCR9nqDmhPSJ
-# 9xd1kqYxSK7mD46iXi42Hkgagdww2MihggJEMIICQAYJKoZIhvcNAQkGMYICMTCC
+# IwYJKoZIhvcNAQkEMRYEFDYYBTkmdlqUSJmCba2Jb7d9eNYIMA0GCSqGSIb3DQEB
+# AQUABIIBAHGbmtqS7q7waCNvKbK3WXnMHmrVd+HRkGYxrTdcYON0a68qcy0l6vxw
+# LNY2+BphQurEQ86cLx11O5EJr827weRGYYw7Y9WY+ZN76tnc5G9Ar9KEf4JybRYv
+# RmM1BXg3HIIcGalcrwL4cs2tkRCbdvFOh+kPDxCsqufQHQuGqaPqsgsDIl6/T3Xh
+# TKQ1CePATAg9qfyPF5ARLgLAaneEjmISufU4hbvWAd13O8hx3Wh2RXaNs1R93zMO
+# Esvv+xmDWkBKAbDpiycDEW2KWijl3dD0vX2+xXBD0F+Um+lXxvhMeKWlPW1yU50h
+# q4OK98nddjQz5OmOfxcn4nLkcBYiqzKhggJEMIICQAYJKoZIhvcNAQkGMYICMTCC
 # Ai0CAQAwgaowgZUxCzAJBgNVBAYTAlVTMQswCQYDVQQIEwJVVDEXMBUGA1UEBxMO
 # U2FsdCBMYWtlIENpdHkxHjAcBgNVBAoTFVRoZSBVU0VSVFJVU1QgTmV0d29yazEh
 # MB8GA1UECxMYaHR0cDovL3d3dy51c2VydHJ1c3QuY29tMR0wGwYDVQQDExRVVE4t
 # VVNFUkZpcnN0LU9iamVjdAIQR4qO+1nh2D8M4ULSoocHvjAJBgUrDgMCGgUAoF0w
 # GAYJKoZIhvcNAQkDMQsGCSqGSIb3DQEHATAcBgkqhkiG9w0BCQUxDxcNMTMxMTA4
-# MjIxMTA0WjAjBgkqhkiG9w0BCQQxFgQUO0afJNIA7QcergAz/HDKpc1PT7QwDQYJ
-# KoZIhvcNAQEBBQAEggEAnoph5Uka6BXrDSewbd24VM79/OZzr1xKJG9OiS5e2pv1
-# SyrHPoyGVIxlf9/AAsr6LOGJbZREkS2vAF6oSzCYVRKLrYQ94lHZuofLRcS9cqoT
-# bB6zbngs043iBhYpubwOAYr2PjArpvpXhC+NAlOWlgTD8aKNYW4r1lOrHpCdqviu
-# SlyaeSWp7ceitMKs0AshjoTr/IOC5AThUtkAvF1vWzlEQUBY98yhVIl7Y6Ky7OjQ
-# sjYC7aZF1fIOeYpk/EVIT5aiL8ckSdHX7kz0wZZnFD3aZRU5PWsPRSo0XxyzMdBy
-# /YwGmeY+fX8DrjxW7TPqfWTGLz4CPpE6tpI5WA59SQ==
+# MjIxMTA0WjAjBgkqhkiG9w0BCQQxFgQU2hBKfqJAj4GmLeCdrxzRBc027K4wDQYJ
+# KoZIhvcNAQEBBQAEggEATHWRxcqhKkqE4rryne2TyEHrBPdjGBMYPzVRWRFmrppz
+# ZwpKZ23ba4dtCf3CACyBOLEXE5oZFR05HTS/UP7G+ELInvtEfmp3eJcXe7/L+Vl0
+# x23IDKP+2aFoWlMqz+VdZgV8l7CjGWcaMN5sHl3Ry2M6HDUuaUxdP6QNZ6Y8jjRB
+# JVMt9vVnYWrALuvX4s1sGq5dfkB0zlvZyI9Jc2wCPmnOQxhCObBKwZqWvkHtMFkn
+# AGxOulrL1eKgzrU6HKo7/HVionERry+HvwHNzjoriGeGk5ndEMhchxf2ITNOiPV0
+# /UDgTY/Fy+4Wn7z5/WhHfSXFasZeMpJf9AAtKBWMiA==
 # SIG # End signature block

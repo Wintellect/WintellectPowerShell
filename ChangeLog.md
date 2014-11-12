@@ -1,5 +1,18 @@
 # Wintellect PowerShell Change Log #
 
+## November 11, 2014
+A huge refactor! 
+
+- Full support for the spanking new Visual Studio 2015.
+- Now dot sourcing the individual files so I can start sharing some code.
+- Fixed many of the warnings reported by Script Analyer 1.4.
+- Now requiring PowerShell 4.0.
+- Removed my Get-Hash and now using Get-FileHash.
+- Remove-IntelliTraceFiles now supports -Latest like Import-VisualStudioEnvironment
+- Get-SysInternalsSuite uses Invoke-WebRequest and additionally called Unblock-File to unlock all the extracted files.
+- Fixed the issue where I was not exporting the set alias correctly.
+
+
 ## July 7, 2014
 Fixed an issue in Add-NgenPdbs where I wasn't handling the case where the VS cache directory could be blank.
 
