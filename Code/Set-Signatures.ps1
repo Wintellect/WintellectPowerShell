@@ -1,7 +1,7 @@
-#requires -version 4.0
+﻿#requires -version 4.0
 ###############################################################################
 # WintellectPowerShell Module
-# Copyright (c) 2010-2014 - John Robbins/Wintellect
+# Copyright (c) 2014 - John Robbins/Wintellect
 # 
 # Do whatever you want with this module, but please do give credit.
 ###############################################################################
@@ -10,190 +10,71 @@
 # followed.
 Set-StrictMode -version Latest
 
-###############################################################################
-# Public Cmdlets
-###############################################################################
-
-function Compare-Directories
+function Set-Signatures
 {
 <#
 .SYNOPSIS
-Compare two directories to see if they are identical
-
+Simple wrapper script for digitally signing files
 .DESCRIPTION
-This cmdlet will compare two directories and report if the files are identical 
-by name, and optionally on content.
-    
-Symbol explanation:
-=> - The file is in the -NewDir directory, not the -OriginalDir.
-<= - The file is in the -OriginalDir directory and not the -NewDir.
-!= - The file is in both directories, but the content is not identical.
-    
-If the directories are identical an empty hash table is returned.
-    
-Since sometimes filenames are long, you can pipe this output of this cmdlet 
-into Format-Table -AutoSize to avoid truncating the filenames.
-
-.PARAMETER OriginalDir
-The original directory to use for the comparison.
-
-.PARAMETER NewDir
-The new directory to compare to.
-
-.PARAMETER Excludes
- The array of exclusions, including wildcards, so you can filter out some of 
- the extraneous files.
-
-.PARAMETER Recurse
-Recurse the directory tree. The default is to just look at the directory.
-
-.PARAMETER Force
-Allows the cmdlet to get items that cannot otherwise not be accessed by the 
-user, such as hidden or system files.
-
-.PARAMETER Content
-Check the content of matching filenames in both directories to see if they are 
-equal. This is done through the Get-FileHash cmdlet from PowerShell 4.0.
-
-.OUTPUTS 
-HashTable
-The name is the file, and the value is the difference indicator. If the 
-directories are identical, an empty hash table is returned.
-
-.EXAMPLE
-C:\PS>Compare-Directories .\Original .\Copied -Content
-    
-    
-Compares the original directory against a copied directory for both filenames 
-and content.
-    
-This shows that both file a.pptx, and c.pptx are in both directories but the 
-content is different. Files f.pptx and i.pptx are only in the .\Copied 
-directory.    
-    
-Name                           Value
-----                           -----
-a.pptx                         !=
-c.pptx                         !=
-f.pptx                         =>
-i.pptx                         =>
-
+Automatically grabs the first code signing certificate in CurrentUser\My and 
+uses the Comodo time stamp server so you just have to worry about the files.
+.PARAMETER Files
+The files to digitally sign. Any files that can be normally digitally
+signed can be passed here.
+.PARAMETER Certificate
+Defaults to first code signing certificate in the cert:\CurrentUser\My 
+certificate storage that does not have Azure in the name.
+.PARAMETER TimeStampServer
+The timestamp server to use. Defaults to 
+http://timestamp.comodoca.com/authenticode
+.LINK
+http://www.wintellectnow.com
 #>
-    param (
-        [Parameter(Mandatory=$true)]
-        [string] $OriginalDir,
-        [Parameter(Mandatory=$true)]
-        [string] $NewDir,
-        [string[]] $Excludes,
-        [switch] $Recurse,
-        [switch] $Force,
-        [switch] $Content
-        )
 
-    if ((Test-Path -Path $OriginalDir) -eq $false)
+    [CmdletBinding(SupportsShouldProcess=$true)]
+    param
+    (
+        [Parameter(ValueFromPipeline=$true,
+                   ValueFromPipelineByPropertyName=$true,
+                   Mandatory=$true,
+                   HelpMessage="Please enter the PowerShell files to sign")]
+        [Alias('FullName')]
+        $Files,
+        [ValidateNotNull()]
+        $Certificate = @(Get-ChildItem -Path cert:\CurrentUser\My -CodeSigning | 
+                            Where-Object { $_.Subject -notlike "*Azure*" } |
+                                Select-Object -First 1)[0],
+        [ValidateNotNull()]
+        $TimeStampServer = "http://timestamp.comodoca.com/authenticode"
+    )
+
+    begin
     {
-        throw "$OriginalDir does not exist"
+        # Because this is a script file, nothing can come between the params 
+        # and begin statements. Interestingly, if something does PowerShell
+        # ignores the begin and when it hits the process, treats it as the 
+        # alias Get-Process. :)
+        Set-StrictMode -Version Latest
     }
-
-    if ((Test-Path -Path $NewDir) -eq $false)
+    process
     {
-        throw "$NewDir does not exist"
-    }
-    
-    # I need the real paths for the two input directories.
-    $OriginalDir = (Resolve-Path -Path $OriginalDir).ToString().Trim("\")
-    $NewDir = (Resolve-Path -Path $NewDir).ToString().Trim("\")
-    # When you do a Resolve-Path on a network share you get the 
-    # Microsoft.PowerShell.Core\FileSystem:: added to the name so 
-    # yank it off if there.
-    $OriginalDir = StripFileSystem -directory $OriginalDir
-    $NewDir = StripFileSystem -directory $NewDir
-
-    # Do the work to find all the files.
-    $origFiles = Get-ChildItem -Path $OriginalDir -Recurse:$Recurse -Force:$Force -Exclude $Excludes
-    $newFiles = Get-ChildItem -Path $NewDir -Recurse:$Recurse -Force:$Force -Exclude $Excludes
-
-    # If either return is empty, create an empty array so I can return correct data.
-    if ($origFiles -eq $null)
-    {
-        $origFiles = @()
-    }
-    if ($newFiles -eq $null)
-    {
-        $newFiles = @()
-    }
-
-    # Now do the comparisons on the names only.
-    $nameComp = Compare-Object -ReferenceObject $origFiles -DifferenceObject $newFiles
-
-    # The hash we are going to return.
-    $resultHash = @{}
-    
-    # If there's no differences, $nameComp is null.
-    if ($nameComp -ne $null)
-    {
-        # Push the PSCustomObject type into a resultHash table so content checking can put it's custom
-        # results into the table.
-        $nameComp | ForEach-Object { $resultHash[$_.InputObject] = $_.SideIndicator}
-    }
-
-    # if comparing the content
-    if ($Content)
-    {
-        # Get just the matching values by calling Compare-Object -ExcludeDifferent -IncludeEqual.
-        # Note that I'm using -PassThru here because I want result to be the identical filenames, not the
-        # normal custom object returned by Compare-Object.
-        $sameFiles = Compare-Object -ReferenceObject $origFiles -DifferenceObject $newFiles -IncludeEqual -ExcludeDifferent -PassThru
-
-        foreach($file in $sameFiles)
+        foreach ($file in $Files)
         {
-        
-            # Build up the paths to the original file and the new file.
-            $orig = $OriginalDir
-            $orig += "\" + $file 
-
-            # Am I about to check a directory that's in both places? If so, skip it because the
-            # hash will be different because the strings are different.
-            if ((Get-Item -Path $orig) -is [System.IO.DirectoryInfo])
+            # Always support -whatif
+            if ($PSCmdlet.ShouldProcess("$_", "Set-AuthenticodeSignature"))   
             {
-                continue 
-            }
-
-            $new = $NewDir 
-            $new += "\" + $file
-
-            $origHash = Get-FileHash -Path $orig
-            $newHash = Get-FileHash -Path $new
-
-            if ($origHash.Hash -ne $newHash.Hash)
-            {
-                $resultHash[$file] = "!="
+                Set-AuthenticodeSignature -FilePath $file `
+                                          -Certificate $Certificate `
+                                          -TimestampServer $TimeStampServer 
             }
         }
     }
-
-    # Nice trick to get the hash sorted by Name so it's easier to read.
-    $resultHash.GetEnumerator()  | Sort-Object -Property Name
 }
-
-function StripFileSystem([string]$directory)
-{
-    $fsText = "Microsoft.PowerShell.Core\FileSystem::" 
-    if ($directory.StartsWith($fsText))
-    {
-        $fsLen = $fsText.Length
-        $dirLen = $directory.Length
-        $directory = $directory.Substring($fsLen,$dirLen - $fsLen)
-    }
-    return $directory
-}
-
-
 # SIG # Begin signature block
 # MIIYSwYJKoZIhvcNAQcCoIIYPDCCGDgCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU1NbpF2IlAaXs3cgoWd1D1NPB
-# zkqgghM8MIIEhDCCA2ygAwIBAgIQQhrylAmEGR9SCkvGJCanSzANBgkqhkiG9w0B
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUIogLzLXOLvuYmKUyu9MyYBqV
+# PmygghM8MIIEhDCCA2ygAwIBAgIQQhrylAmEGR9SCkvGJCanSzANBgkqhkiG9w0B
 # AQUFADBvMQswCQYDVQQGEwJTRTEUMBIGA1UEChMLQWRkVHJ1c3QgQUIxJjAkBgNV
 # BAsTHUFkZFRydXN0IEV4dGVybmFsIFRUUCBOZXR3b3JrMSIwIAYDVQQDExlBZGRU
 # cnVzdCBFeHRlcm5hbCBDQSBSb290MB4XDTA1MDYwNzA4MDkxMFoXDTIwMDUzMDEw
@@ -301,23 +182,23 @@ function StripFileSystem([string]$directory)
 # VQQDExhDT01PRE8gQ29kZSBTaWduaW5nIENBIDICEHF/qKkhW4DS4HFGfg8Z8PIw
 # CQYFKw4DAhoFAKB4MBgGCisGAQQBgjcCAQwxCjAIoAKAAKECgAAwGQYJKoZIhvcN
 # AQkDMQwGCisGAQQBgjcCAQQwHAYKKwYBBAGCNwIBCzEOMAwGCisGAQQBgjcCARUw
-# IwYJKoZIhvcNAQkEMRYEFGvvtZ5RSBT64XI/GYcf1OdDzB1XMA0GCSqGSIb3DQEB
-# AQUABIIBAAJ/u0tALY8Ewuxn+nRTNdIlajCQa5+w3s0YfAz59vQhU8cp0p+Xv+1H
-# 7lpAxNKvUPqiYVgwcTfWdfqEDK1ImS20t3CBRY4Z0wvXUUm0AGJh8vp8eQqrs4lP
-# JHYWbr/AS14nDUJIqYcT5Tis1oT/lmeWcKOzCDSFnU7XCQNQpZRgdrsGdZa9Rxcp
-# VHtCxkad+k/HrcmVNO1/HibJpveXDE6pfZfdJr2T+SHQhxHEKjlsE8g3mPYym/uO
-# Bd9saPMCbZMQDXeYIxm4IPm4lXlljLZpCGu0kKDdpYpF4G/0oVIFVjcHy/p5TCkt
-# uQGCqg5rENfqIpsd7Doo8UuGkC/c/nGhggJEMIICQAYJKoZIhvcNAQkGMYICMTCC
+# IwYJKoZIhvcNAQkEMRYEFOzFpFI2Did0sdF9VzbV4YUwUBpAMA0GCSqGSIb3DQEB
+# AQUABIIBAEq2czmOFkmZIstX3I+n6eMtvpVHnkSpjOaxbQG6R8IOVnjuQwE+hnwT
+# qQXwQKtoPCRkf+wMvmIe72vR0pFDK6Vww6lqdCqwW3vx/RG5L1KGTqXZImj4umAi
+# C4w06MttZKBHAcG7Ie8WZ53XQqUa/ya8rkuGYqWmwN8+ewwhFA2dKE/WqBXZ0pXy
+# TxNKnD8bR/NOH1uqL2d+GNayDKEjN4r/j/GlBHsT7H6e+MaztjCl7TMGpV5P0898
+# q2xAHc9WPkw7gHUL41JmVx2creKuz6bE9l0CBN2q0BUSkV8p/J29I/Ohua8l2mg+
+# LQGzWB4B8nK5ml/e3kiDVPlNIgWeLE2hggJEMIICQAYJKoZIhvcNAQkGMYICMTCC
 # Ai0CAQAwgaowgZUxCzAJBgNVBAYTAlVTMQswCQYDVQQIEwJVVDEXMBUGA1UEBxMO
 # U2FsdCBMYWtlIENpdHkxHjAcBgNVBAoTFVRoZSBVU0VSVFJVU1QgTmV0d29yazEh
 # MB8GA1UECxMYaHR0cDovL3d3dy51c2VydHJ1c3QuY29tMR0wGwYDVQQDExRVVE4t
 # VVNFUkZpcnN0LU9iamVjdAIQR4qO+1nh2D8M4ULSoocHvjAJBgUrDgMCGgUAoF0w
 # GAYJKoZIhvcNAQkDMQsGCSqGSIb3DQEHATAcBgkqhkiG9w0BCQUxDxcNMTQxMjI4
-# MDA0MDU4WjAjBgkqhkiG9w0BCQQxFgQUJ2145ikoOT+c7xy2TwB7DCmYh4owDQYJ
-# KoZIhvcNAQEBBQAEggEASKe7Kijb0+QDFMvCsqRM3nGpvkwr8Hcr9MuuCRHmsLR4
-# O01ss+2b6/2jRdkJ13jtqRd0rYsvGjqJILjYU1LWOChQTDK5KKYqoosyg8JREvtC
-# 8ONihpYO4fqaErwEcIzdly7Lfb2DamTy7iZ3g3I7n6CvxmfdW7mNVAVNbgmkBlRS
-# 4pb5J+4r4znLl9lXg08skTQxk9XNsxDHfZT0iNeuHavnjnem+sBsC9aDK54stTLB
-# VRVig8MYzzPM/V6KbWT/GFyvHqGY7SIDitbLnNPoegcCIat1nQgzFDzYNqJBwquY
-# VUVjTtfdkJs1SJh4KFLkXtTn43Ivs9RyeLtHvMLe7A==
+# MDA0MDU4WjAjBgkqhkiG9w0BCQQxFgQUiDr/Q2rW+FrhPqDUDEQ3PoYp8u8wDQYJ
+# KoZIhvcNAQEBBQAEggEAlZNYbSCjkO6dMBeF1Jfn+oF5YnkS5cUqvYQ0FINp5q7z
+# 3BYPL4iV6a6lp3Lle3Z/n3OX0fNSqsX8E+9aftKPkUiKYnrJruxcO9ZQcGPKtcnY
+# rKFt6ni/A69yAmWiCHZIx1RsNp+CQQrAakgDCKEDtcHnMV4PaExasmTkC7hkEAUp
+# 5VbRLrdMmmVw7/663VU/nigd/q74sMRGEBeWfK/vL4WiS3C9RHJ9Smu+X8Cmoq2B
+# jpC63p4LiAfd+giO+wlxoviWK8buMgfMN3e4HWnNXMeIaxl9RoTJugrkVfcdEn1M
+# /RSPP4YPo1hDNkqj48ENvE6dS1pOjSX0mzQERUxzDg==
 # SIG # End signature block

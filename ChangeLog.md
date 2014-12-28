@@ -1,5 +1,12 @@
 # Wintellect PowerShell Change Log #
 
+## December 27, 2014
+Small updates
+
+- Added Set-Signatures to make signing scripts easier mainly for me and others who sign but also have Azure certificates on the computer.
+- Removed unneeded array conversion in Compare-Directories
+- Removed the -Quiet switch to Add-NgenPdbs and removed Write-Host calls in the function. Use the standard -Verbose to see the output.
+
 ## November 11, 2014
 A huge refactor! 
 

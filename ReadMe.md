@@ -78,6 +78,10 @@ Here's the about text showing all cmdlets. Of course, all cmdlets have detailed 
 	                                   VCVARSALL.BAT file importing the environment
 	                                   variables into PowerShell for command line
 	                                   usage.
+
+    	Set-Signatures                 Makes digitally signing files a lot easier by
+                                   	   looking for the first non-Azure code signing 
+                                       file and picking the timestamp server.
 	
 	SEE ALSO
 	    Online help and updates: 

@@ -20,7 +20,7 @@ function Add-NgenPdbs
 Create PDB files for NGEN'd images on a machine.
 
 .DESCRIPTION
-When running the Visual Studio profiler on Windows 8 or Windows Server 2012, 
+When running the Visual Studio profiler on Windows 8+ or Windows Server 2012+, 
 you need the PDB files for any binaries that have been NGEN'd and put in the GAC 
 so you can see the calls into those binaries. Fortunately NGEN.EXE can generate 
 the PDB files after the fact and this script automates the process for so you
@@ -48,12 +48,6 @@ framework directories for both x86 and x64. If you need other NGEN'd binaries
 from 3rd pary tools, specify this switch. Some NGEN'd binaries, but not from the .NET 
 framework, will report errors when attempting to build their PDB files.
 
-.PARAMETER Quiet
-Because it can take a long while for this function to produce all the PDB files
-it reports the assembly being processed. If this is annoying to you, specifing 
--Quiet will turn off that output. Any warnings about PDB creation will still be
-reported.
-
 .NOTES
 To read more about using NGEN to produce PDB files after a binary has been precompiled
 see this article: http://blogs.msdn.com/b/visualstudioalm/archive/2012/12/10/creating-ngen-pdbs-for-profiling-reports.aspx
@@ -66,11 +60,11 @@ http://www.wintellect.com/blogs/jrobbins
 https://github.com/Wintellect/WintellectPowerShell
 
 #>
+    [CmdletBinding()]
     param 
     (
         [string]$CacheDirectory = "",
-        [switch]$DoAllGACFiles,
-        [switch]$Quiet
+        [switch]$DoAllGACFiles
     )
 
     # If the CacheDirectory is empty, use the symbol path directory.
@@ -191,15 +185,12 @@ https://github.com/Wintellect/WintellectPowerShell
 
         }
 
-        if ($Quiet.IsPresent -eq $false)
+        $msgBitness = '(x86)'
+        if ($bits -eq "64")
         {
-            $msgBitness = '(x86)'
-            if ($bits -eq "64")
-            {
-                $msgBitness = "(x64)"
-            }
-            Write-Host -Object "Generating PDB file for $msgBitness $baseName.dll"
+            $msgBitness = "(x64)"
         }
+        Write-Verbose -Message "Generating PDB file for $msgBitness $baseName.dll"
         
         $ngenCmd = $env:windir + "\Microsoft.NET\Framework" + $bits + "\" + $fwVersion + "\NGEN.EXE" + ' createPDB ' + '"' + $f.FullName + '"' + ' "' + $CacheDirectory +'"'
 
@@ -217,8 +208,8 @@ https://github.com/Wintellect/WintellectPowerShell
 # SIG # Begin signature block
 # MIIYSwYJKoZIhvcNAQcCoIIYPDCCGDgCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUM5VCjBS8UYSQ44m+mzSkI20q
-# GZqgghM8MIIEhDCCA2ygAwIBAgIQQhrylAmEGR9SCkvGJCanSzANBgkqhkiG9w0B
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUUB9wc+91wwbKnM8ok+njOWiB
+# c2KgghM8MIIEhDCCA2ygAwIBAgIQQhrylAmEGR9SCkvGJCanSzANBgkqhkiG9w0B
 # AQUFADBvMQswCQYDVQQGEwJTRTEUMBIGA1UEChMLQWRkVHJ1c3QgQUIxJjAkBgNV
 # BAsTHUFkZFRydXN0IEV4dGVybmFsIFRUUCBOZXR3b3JrMSIwIAYDVQQDExlBZGRU
 # cnVzdCBFeHRlcm5hbCBDQSBSb290MB4XDTA1MDYwNzA4MDkxMFoXDTIwMDUzMDEw
@@ -326,23 +317,23 @@ https://github.com/Wintellect/WintellectPowerShell
 # VQQDExhDT01PRE8gQ29kZSBTaWduaW5nIENBIDICEHF/qKkhW4DS4HFGfg8Z8PIw
 # CQYFKw4DAhoFAKB4MBgGCisGAQQBgjcCAQwxCjAIoAKAAKECgAAwGQYJKoZIhvcN
 # AQkDMQwGCisGAQQBgjcCAQQwHAYKKwYBBAGCNwIBCzEOMAwGCisGAQQBgjcCARUw
-# IwYJKoZIhvcNAQkEMRYEFGg5lXnp2ZPHrhy8IPmRcYtAZcQ8MA0GCSqGSIb3DQEB
-# AQUABIIBABSXYQxU90hgloCMsoP8pMRcKdLDVxjRyShngCi25gcKyX5L59EuJc7d
-# W2V0jK06SciOZZWA6fI/KM/7BwqNweIxOssfpenUX9QTlebdR4vzfOjNbTl1XDpp
-# Wjgs7+KFWgJm6MASjuDinNyqCa52SfmWKDiP6JesdGYAabai8lu0BRV934mbnuIa
-# 9NucEBx+B2F3/0fspUcnoySu5q2nGZbay97rB3yAkgALB4AqSxjzTsE8y74j2rAO
-# hfPb36OVdW4ogXvRFJDY1HGy4JGSVDg2LAnEHLo91Ir1SNAD2dN8okPzZvp3p1w1
-# EVIg+wbSLHBfOT+GJ9LdN57O+j6rz0GhggJEMIICQAYJKoZIhvcNAQkGMYICMTCC
+# IwYJKoZIhvcNAQkEMRYEFOMz5wu+iTpNGEKFR55HO2OHQ103MA0GCSqGSIb3DQEB
+# AQUABIIBALds/RQWoyIeY4c6/e3l8WCR+/wWl58F7UMGHLh1Ecrgg14JSAR3Htsw
+# P82dhBAUrBoHaiprckiNSbXabEGga6/Oyxxhn0T9aVV1EObUvb2pnsDFN+dl4OjU
+# GimxyUv4PBhhNO7tqGE5joCkNeFGQ7SQ/HNvLzYWo1LF/aknsOrVVgDcrjo7uAoc
+# MjmmeTit/x8fueIv5eH1Xs1Oeu8OFtiiEs3wNiLEn7rbRDnUa+/fQnCs2TWXGa6y
+# /SRJA3kr1Nqvuj4M3xkeH2ob0D84GraKTb298Ory3hVgtFBd7430jRaG+oWh1AIx
+# U0a/ZP9+Faf/yUnrtlmt1NuiEbOmIxShggJEMIICQAYJKoZIhvcNAQkGMYICMTCC
 # Ai0CAQAwgaowgZUxCzAJBgNVBAYTAlVTMQswCQYDVQQIEwJVVDEXMBUGA1UEBxMO
 # U2FsdCBMYWtlIENpdHkxHjAcBgNVBAoTFVRoZSBVU0VSVFJVU1QgTmV0d29yazEh
 # MB8GA1UECxMYaHR0cDovL3d3dy51c2VydHJ1c3QuY29tMR0wGwYDVQQDExRVVE4t
 # VVNFUkZpcnN0LU9iamVjdAIQR4qO+1nh2D8M4ULSoocHvjAJBgUrDgMCGgUAoF0w
-# GAYJKoZIhvcNAQkDMQsGCSqGSIb3DQEHATAcBgkqhkiG9w0BCQUxDxcNMTQxMTEy
-# MTgwMzIyWjAjBgkqhkiG9w0BCQQxFgQUHATSXm9cfiWWy3Z1ciV5e/lLBq8wDQYJ
-# KoZIhvcNAQEBBQAEggEAEsqnkhYuF0nSW1AIvjKD0QYSWecQLxyk0h1VX75+T0S1
-# U/Sns4hi2lZs6lVUwrj6V+uXWgWjXff5bgWszZeSHHzRd2ScIqs9HHwwH4iL9Cfe
-# qoAhv5r+Ru36Io8r1evqX/XeozI25reoNfgfHU7F3K4pRWPXojHLviFU3LuYfaXi
-# WA22+tQCy1TnFe6v4k/SoWNFiV5toWCqMvVqMifRAlrWznRfH+xxngbKAP/sNjY2
-# JfY7ZVEIp2G/Rmw6pUdDsmxkgeoObvxq8qhPedurzwz1/AAf8YS2+srEgGLYyXxd
-# amMshOH8giNYtTEJnJla4PZHWq+qGZRgoQpKojCxwQ==
+# GAYJKoZIhvcNAQkDMQsGCSqGSIb3DQEHATAcBgkqhkiG9w0BCQUxDxcNMTQxMjI4
+# MDA0MDU4WjAjBgkqhkiG9w0BCQQxFgQUKM5cFbCh0r00pj3xtpT9FTElycUwDQYJ
+# KoZIhvcNAQEBBQAEggEAnMfgPWF7rnbIc2rdC0EaDag7fhLcHEnGUgZv3KmYbAsU
+# SwglLuFzqUnk5HK2k4cq2RK9bGzo1qu0e7xkZQHYby2K6WGDgDy3zxbX8GOx8sRD
+# p6OR2C9oXpDLpZnCV0x//eYCpKreJTcQZJK+1Hgj2FEH/XAG93v4o6C4LgFNYtWX
+# 0e2KrbpnO9/1jkkoj4MYf0MriqII9MUFx0UkF3DIxOEp+HyDpLyBug24VB0jfWQN
+# Zg0ZKRZ07uTBWCTlLzhO2RJEkFbX0RG4d+Wrp64V1JR7jfLdordBgNOn/3bYsv5h
+# 2EiXYrveb8VVnpBH71/lQkKn3sb2Hn9lq8H0henxTw==
 # SIG # End signature block

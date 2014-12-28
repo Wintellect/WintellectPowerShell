@@ -73,8 +73,9 @@ LONG DESCRIPTION
                                    variables into PowerShell for command line
                                    usage.
 
-    Get-MyVariables                Makes it much easier to see just the variables
-                                   you define in PowerShell.
+    Set-Signatures                 Makes digitally signing files a lot easier by
+                                   looking for the first non-Azure code signing 
+                                   file and picking the timestamp server.
 
 SEE ALSO
     Online help and updates: 
