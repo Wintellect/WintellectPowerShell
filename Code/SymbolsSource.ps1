@@ -29,29 +29,36 @@ function CreateDirectoryIfNeeded ( [string] $directory )
 	}
 }
 
+# Just to hide PS errors when reading registry keys that don't exist.
+function SmartGetRegProperty($regKey,$regValue)
+{
+    $key = Get-ItemProperty -Path $regKey -Name $regValue -ErrorAction SilentlyContinue
+    if ($key -ne $null)
+    {
+        return $key.$regValue
+    }
+    return $null
+}
+
 # Reads the values from VS 2010+, and the environment.
 function GetCommonSettings($regValue, $envVariable)
 {
     $returnHash = @{}
     if (Test-Path -Path $devTenDebuggerRegKey)
     {
-        $returnHash["VS 2010"] = 
-                (Get-ItemProperty -Path $devTenDebuggerRegKey).$regValue
+        $returnHash["VS 2010"] = SmartGetRegProperty -regKey $devTenDebuggerRegKey -regValue $regValue
     }
     if (Test-Path -Path $devElevenDebuggerRegKey)
     {
-        $returnHash["VS 2012"] = 
-                (Get-ItemProperty -Path $devElevenDebuggerRegKey).$regValue
+        $returnHash["VS 2012"] = SmartGetRegProperty -regKey $devElevenDebuggerRegKey -regValue $regValue
     }
     if (Test-Path -Path $devTwelveDebuggerRegKey)
     {
-        $returnHash["VS 2013"] = 
-                (Get-ItemProperty -Path $devTwelveDebuggerRegKey).$regValue
+        $returnHash["VS 2013"] = SmartGetRegProperty -regKey $devTwelveDebuggerRegKey -regValue $regValue
     }
     if (Test-Path -Path $devFourteenDebuggerRegKey)
     {
-        $returnHash["VS 2015"] = 
-                (Get-ItemProperty -Path $devFourteenDebuggerRegKey).$regValue
+        $returnHash["VS 2015"] = SmartGetRegProperty -regKey $devFourteenDebuggerRegKey -regValue $regValue
     }
     $envVal = Get-ItemProperty -Path HKCU:\Environment -Name $envVariable -ErrorAction SilentlyContinue
     if ($envVal -ne $null)
@@ -514,8 +521,8 @@ https://github.com/Wintellect/WintellectPowerShell
 # SIG # Begin signature block
 # MIIYSwYJKoZIhvcNAQcCoIIYPDCCGDgCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUPNN8QM7KTqQrYw3qbdjfwML/
-# U6SgghM8MIIEhDCCA2ygAwIBAgIQQhrylAmEGR9SCkvGJCanSzANBgkqhkiG9w0B
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUEVxDzrs5QL8kHOWizswP6d0e
+# 9g2gghM8MIIEhDCCA2ygAwIBAgIQQhrylAmEGR9SCkvGJCanSzANBgkqhkiG9w0B
 # AQUFADBvMQswCQYDVQQGEwJTRTEUMBIGA1UEChMLQWRkVHJ1c3QgQUIxJjAkBgNV
 # BAsTHUFkZFRydXN0IEV4dGVybmFsIFRUUCBOZXR3b3JrMSIwIAYDVQQDExlBZGRU
 # cnVzdCBFeHRlcm5hbCBDQSBSb290MB4XDTA1MDYwNzA4MDkxMFoXDTIwMDUzMDEw
@@ -623,23 +630,23 @@ https://github.com/Wintellect/WintellectPowerShell
 # VQQDExhDT01PRE8gQ29kZSBTaWduaW5nIENBIDICEHF/qKkhW4DS4HFGfg8Z8PIw
 # CQYFKw4DAhoFAKB4MBgGCisGAQQBgjcCAQwxCjAIoAKAAKECgAAwGQYJKoZIhvcN
 # AQkDMQwGCisGAQQBgjcCAQQwHAYKKwYBBAGCNwIBCzEOMAwGCisGAQQBgjcCARUw
-# IwYJKoZIhvcNAQkEMRYEFHEGnuXTCk4XGUE04vPTGO+kZ+t0MA0GCSqGSIb3DQEB
-# AQUABIIBAJWRrypm2A3NsFDNGRxwrbARyrirjEft0raYDd0ZUgw9xcgTuNl9Uahn
-# OfE3jQXDcgij/4CYC5s9Ya44tnzQCmDFF3RRh4qhuYbEut1+uHAOanpUEwaJo2HS
-# NZYv4tXQuRTTcty6+Z1f/YF2JH0/ybmDMruGhGt1bzU0X1BQSW5nFVDwBq/AR4gi
-# exm+qVVwfhFuEFYCuTklGM83/bkC61yvgDYE6FvY107K/ZpSnWyrT2xWVwLZPLoQ
-# cCoZ9agusEWBGmKsY1IB9Kh5YFqfXoMl2ryF3UtLg4z4gviGZrMuScrAcG1aNj0W
-# xzZbX+PnpD95wXo2WD1TAx7KGhD/52ihggJEMIICQAYJKoZIhvcNAQkGMYICMTCC
+# IwYJKoZIhvcNAQkEMRYEFDkxGgzawYLG2S8pNirSRvYXZEOiMA0GCSqGSIb3DQEB
+# AQUABIIBAK/1RYNiutAcH3HNkJ+el7myr8PyWo48zatLyIRoej8DkGq3RUpphRt9
+# QqBjVp1SCutnwzdx1drwvmx99Q7zl5Y6bICeNyMuewlOMhEFjdMbWdLe9v2X13h0
+# 3dzaGFU8MKOBxuCGxgy7mfvrr/RV7H/rJ6PRH7WSfFNmpaPk3quKGDXtVGSaNWSX
+# 11VonKI1SWhJGQxSR0oLtGuznyKWcXdLRo2bC14qKlLV+gmbuh2sLPJO2BJAFzzL
+# pxKE8M/CSC4h82q8YtDdfzVzPyQDGq16Jdlyd6g/V4AmI99CeGneWY16nz49GWz5
+# qTqciudhgZSrnvuLjQtL92pOpGzKltyhggJEMIICQAYJKoZIhvcNAQkGMYICMTCC
 # Ai0CAQAwgaowgZUxCzAJBgNVBAYTAlVTMQswCQYDVQQIEwJVVDEXMBUGA1UEBxMO
 # U2FsdCBMYWtlIENpdHkxHjAcBgNVBAoTFVRoZSBVU0VSVFJVU1QgTmV0d29yazEh
 # MB8GA1UECxMYaHR0cDovL3d3dy51c2VydHJ1c3QuY29tMR0wGwYDVQQDExRVVE4t
 # VVNFUkZpcnN0LU9iamVjdAIQR4qO+1nh2D8M4ULSoocHvjAJBgUrDgMCGgUAoF0w
-# GAYJKoZIhvcNAQkDMQsGCSqGSIb3DQEHATAcBgkqhkiG9w0BCQUxDxcNMTQxMTEy
-# MTgwMzI1WjAjBgkqhkiG9w0BCQQxFgQU+rlb87XFOchB4Pr2vkKsMoaMdEMwDQYJ
-# KoZIhvcNAQEBBQAEggEAb3JDn0uCSJdETL8oagtqIDa8V9XtubXAAIpSv4Q7j4zl
-# WM+8/NyLbl1Wnt2SF3vyviT2S6ck6Vw/Y7QJcA3GQ59ezw5GkpP49TTcx/NG3+5w
-# Y9DKbEcgzY/m1OwFbPb7m+nAiQP2hSy2SJt9N9cY1ZdkAWdugLPdgQm7HB4qcVtS
-# SdEE2jGAW4WS5ghWCPEsBQaAsOO3fo4n2f7gYPN1fXvfBEiI2QQGo8Yi4cgT0ZH6
-# VTVQnjeaf7lODN11SZbXG5TgtO2PuFYXAhjAQ1BdkcIHne6sqdGUPiCggnc+EqRh
-# PZsXvNgyk4CLmhluiks1R5CMStAzhlveOuva+lfTrQ==
+# GAYJKoZIhvcNAQkDMQsGCSqGSIb3DQEHATAcBgkqhkiG9w0BCQUxDxcNMTUwNTA0
+# MjIzMzM1WjAjBgkqhkiG9w0BCQQxFgQUfU/cJHlaRuOnxIBcz3nTXWQHss0wDQYJ
+# KoZIhvcNAQEBBQAEggEApcbtbJfgg41/3KPP4WCQ2w6QSsJ4b+43ZlSyVDgKm7Mg
+# 7huD0B9UkNBJ7q3OiboMlT/QHYDZuzl4tJpmsDABPHf+htDoIuJwMBnS9wcwxcTB
+# YFTy2DM5DCxdIaqF55E4/Zl0iAcF22VkJrv4MjAZP+28hQrqI2mZiX8zoWSkkKfC
+# HKDEcVQ1Daoxd/2C+vtxGgR2F1in69OpHekHc2XLcDJfuc6l3BCXDDvQnnpXH+VC
+# VGVVn81Zo8Ql0NOa9rZffxifMc9fwXXROKFtemjsFLSgZulaBM4oQj13vFz9CkWX
+# wnxgLdKHtnNBxW6zU5SwhqOL5DQE1pz31JtA5xyx3g==
 # SIG # End signature block
