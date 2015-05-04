@@ -77,6 +77,9 @@ LONG DESCRIPTION
                                    looking for the first non-Azure code signing 
                                    file and picking the timestamp server.
 
+    Get-DumpAnalysis               Automates analyzing a bunch of minidump files
+                                   using CDB and debug scripts.
+
 SEE ALSO
     Online help and updates: 
             http://www.wintellect.com/blogs/jrobbins
