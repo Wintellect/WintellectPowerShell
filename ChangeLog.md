@@ -1,5 +1,10 @@
 # Wintellect PowerShell Change Log #
 
+## May 4, 2015
+- Added Get-DumpAnalysis to automate minidump analysis easier.
+- Fixed a bug in Get-SourceServer and Get-SymbolServer.
+
+
 ## December 27, 2014
 Small updates
 
