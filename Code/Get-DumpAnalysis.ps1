@@ -22,15 +22,11 @@ in the CDB command line. When you start CDB with the -c command line switch
 you can tell it to execute specific commands. Thus if you use the following 
 -c option, you can script CDB.
 
-  cdb.exe -c "$<Commands.txt"
+  cdb.exe -c "$$<Commands.txt"
 
 This script wraps up the CDB -c trick to let you pipe in a bunch of files 
 and have the same commands run on all individual files. All output is TEE'd
 to the screen and to a file. 
-
-Because of limitations in CDB command line and command parsing: IN THE DEBUG
-SCRIPT THE LAST COMMAND MUST BE "Q" TO QUIT. This function validates that
-the the Q is the last command in the file.
 
 The log file written will be named <minidump name>-<debugscriptname>.log
 
@@ -41,11 +37,6 @@ The minidump files to process.
 The script file to pass to CDB. You specify the CDB commands in this file one
 line at a time. For comments, CDB supports using the "*" character at the start
 of the line.
-
-This function will ensure the last command in the script is 'Q'.
-
-The reason Q has to be last is that WinDBG does not allow stacked commands, 
-those delineated with semicolons, when using the $< to execute a script.
 
 .PARAMETER CdbProgramPath
 By default this script assumes that CDB is the PATH environment variable. If you 
@@ -65,14 +56,14 @@ For all mini dump files will be piped to Get-DumpAnalysis and have the debug scr
 MoreStuff.txt run on each one.
 
 .NOTES
-Here is an example of a debugging script:
+Here is an example of a debugging script. Note that asterisks are treated as comments
+by CDB but are output to the log. It's a good idea to use comments so you can identify
+where different commands run so you can use a regular expression to pull them out.
 
 * Do the basic analysis
 !analyze -v
 * Get all the loaded modules 
 lmv
-* Quit the run
-q
 
 .LINK
 http://www.wintellect.com/blogs/jrobbins
@@ -113,30 +104,6 @@ https://github.com/Wintellect/WintellectPowerShell
         $eaten = Test-Path -Path $CdbProgramPath -ErrorAction Stop
 
         Write-Verbose -Message "Using cdb from $CdbProgramPath"
-
-        if ($PSCmdlet.ShouldProcess("$DebuggingScript", "Validating Q at end of file."))
-        {
-            # Check the debugging script to ensure that it has the 'q' command at the
-            # end. This logic allows blank lines and comments ('*') in the script.
-            $scriptLines = Get-Content -Path $DebuggingScript
-            for ($currIndex = $scriptLines.Length - 1; $currIndex -gt 0; $currIndex--)
-            {
-                $line = $scriptLines[$currIndex].Trim().ToUpper()
-                if ($line.Length -eq 0)
-                {
-                    continue;
-                }
-                if ($line[0] -eq 'Q')
-                {
-                    break
-                }
-                if ($line[0] -eq '*')
-                {
-                    continue
-                }
-                throw "The debug script'$DebuggingScript' does not have a 'Q' statement at the end."
-            }
-        }
     }
     process
     {
@@ -150,9 +117,9 @@ https://github.com/Wintellect/WintellectPowerShell
 
             Write-Verbose -Message "Logging to file $logFile"
 
-            if ($PSCmdlet.ShouldProcess("$CdbProgramPath -z $file -c `"$<$fullScriptPath`"", "Executing"))
+            if ($PSCmdlet.ShouldProcess("$CdbProgramPath -z $file -c `"`$$<$fullScriptPath;q`"", "Executing"))
             {
-                &$CdbProgramPath -z $file -c "`$<$fullScriptPath" | Tee-Object -FilePath $logFile
+                &$CdbProgramPath -z $file -c "`$`$<$fullScriptPath;Q" | Tee-Object -FilePath $logFile
             }
         }
     }
@@ -161,8 +128,8 @@ https://github.com/Wintellect/WintellectPowerShell
 # SIG # Begin signature block
 # MIIYSwYJKoZIhvcNAQcCoIIYPDCCGDgCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUsMGZk88GdNKbudjatK2aOfxV
-# oDagghM8MIIEhDCCA2ygAwIBAgIQQhrylAmEGR9SCkvGJCanSzANBgkqhkiG9w0B
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUDQ5XJ77YBthCQtA0+AB0AMRh
+# RJegghM8MIIEhDCCA2ygAwIBAgIQQhrylAmEGR9SCkvGJCanSzANBgkqhkiG9w0B
 # AQUFADBvMQswCQYDVQQGEwJTRTEUMBIGA1UEChMLQWRkVHJ1c3QgQUIxJjAkBgNV
 # BAsTHUFkZFRydXN0IEV4dGVybmFsIFRUUCBOZXR3b3JrMSIwIAYDVQQDExlBZGRU
 # cnVzdCBFeHRlcm5hbCBDQSBSb290MB4XDTA1MDYwNzA4MDkxMFoXDTIwMDUzMDEw
@@ -270,23 +237,23 @@ https://github.com/Wintellect/WintellectPowerShell
 # VQQDExhDT01PRE8gQ29kZSBTaWduaW5nIENBIDICEHF/qKkhW4DS4HFGfg8Z8PIw
 # CQYFKw4DAhoFAKB4MBgGCisGAQQBgjcCAQwxCjAIoAKAAKECgAAwGQYJKoZIhvcN
 # AQkDMQwGCisGAQQBgjcCAQQwHAYKKwYBBAGCNwIBCzEOMAwGCisGAQQBgjcCARUw
-# IwYJKoZIhvcNAQkEMRYEFJCiEs3rYMyNYFxbDLW9LP+QRqoRMA0GCSqGSIb3DQEB
-# AQUABIIBABXEZQ3/R0zeyxNJGvZa+2t/bDJ4hLDj55/+faixsUo5wZ3dFpf8H9R5
-# bRLH71SnU9svbNWP4OcTRfT49Y+5sdS9+g75VgvKDNBxjiW8ZfFVXfYSuqXOlZDZ
-# AxOtuJUZu8seLzeU243p+yJs30d7Di7ZciAKZgFFLp8e0HLctAqWM4n8yYF9wEKt
-# S7e3FF+NSp/DSBlowFG10I3+xd+xLfL6y9Sl/DReO5IMxdtcjHUXEKXYEoPV77uk
-# FCQ+YMLxx1sItY5bW8VXPaAAN6uX0to+2GQGYht12gOX2yPba2lAwdpKb1Meby0J
-# 2+RE4+4gIlNOSmzTClgbcI9E/r+VPXqhggJEMIICQAYJKoZIhvcNAQkGMYICMTCC
+# IwYJKoZIhvcNAQkEMRYEFM+oudMzaOPJ63YYP72ewE0hG58yMA0GCSqGSIb3DQEB
+# AQUABIIBAAtJNTfPy3gP7bogtrsOcPhOn2Q5vppDvVxxEMyuOGzcinKbLLbehGF/
+# LP6woR1gtoY3gvBkKLRF+o4T76C5fXnSfmaVS339RfXjY7m8/VIW1wBD88s1xstv
+# zSnt20y7K3mAVJU/6owZWeZwh+IYHC3w1thRHa3dy7wQXJZhEM/hafjUrkDjcRtB
+# oCSq1rSfGsTnhrhGYbfI7zpvBp4Ce/VxAU1s2DGNfUbGQ7ffpYHZdGC45vIlju/b
+# do/k2D9RdG+ObFjuPgusvKC5W6MutnxHdB9K86kVrPpOHY0t2vFhi4FhmOysz9TM
+# ESRxh0VzW792eUFlZ+ePWxQ3nA/ToQKhggJEMIICQAYJKoZIhvcNAQkGMYICMTCC
 # Ai0CAQAwgaowgZUxCzAJBgNVBAYTAlVTMQswCQYDVQQIEwJVVDEXMBUGA1UEBxMO
 # U2FsdCBMYWtlIENpdHkxHjAcBgNVBAoTFVRoZSBVU0VSVFJVU1QgTmV0d29yazEh
 # MB8GA1UECxMYaHR0cDovL3d3dy51c2VydHJ1c3QuY29tMR0wGwYDVQQDExRVVE4t
 # VVNFUkZpcnN0LU9iamVjdAIQR4qO+1nh2D8M4ULSoocHvjAJBgUrDgMCGgUAoF0w
-# GAYJKoZIhvcNAQkDMQsGCSqGSIb3DQEHATAcBgkqhkiG9w0BCQUxDxcNMTUwNTA0
-# MjEwMTA4WjAjBgkqhkiG9w0BCQQxFgQUzuiKEGWILIM+xkqjXOCZBoWBOzQwDQYJ
-# KoZIhvcNAQEBBQAEggEAYHRfX8HedMLge8gnC6fG8pjHt1e7nhjnsuu6fyUF6zUb
-# 2t25N5Bd2T0MbxKXzsqiyRLDacw2YpHuqUFjTs4gFHn+cYg330mHEzrIjjtTu4Ta
-# s0aZlK/pCe6Go3R3Mq2eJblEoJ95HlTzCghOJPIl4tlCr8hlIDgdExNuWgEctVa/
-# QVtDRcPm65OMUpsm6i5+ylSoGBBoRxRkR2XiBradiH2c2n7/Lb0o4jzqbgT1xS6f
-# xCI+dpJeOXWdDx2+amVHwoMe0m8YK9a/EuNWSfhTBGPaSOeHMjfv36U6D15hGSpY
-# SKQMJI4jBglyVNeU2MnHGER5DJHvWO5tKMcrwxEQ7Q==
+# GAYJKoZIhvcNAQkDMQsGCSqGSIb3DQEHATAcBgkqhkiG9w0BCQUxDxcNMTUwNTA1
+# MDQxNTIzWjAjBgkqhkiG9w0BCQQxFgQULg5zRzUXeWiY5GpMjraAgjgsovowDQYJ
+# KoZIhvcNAQEBBQAEggEAG6JwDA1lZUyvn/mysXuthf5BlApUhY5hNgoODIFHRPT/
+# qkyeqQ/Uly0d8tjX9knmxOnF8I4PHqlbSsaT9uq5uuVFf7iDAihZwkp40ZvWHRf7
+# oWZQLkO22Dw7jV9psn72w/3J5+UAWGB0shS0TpI6qIr+DN7kRZSlrCuz2QpWKVTH
+# u41o/Gw9KmQE5FavxpygkZxkuiCfdVShBXDDmfsNny0/zl9mzJ7yx8K6izggTupm
+# hBSzq/tL4wZnpv2NNsmeBba6Lj8O26hWL1HZivUKX/t7bGSB/8IDrFyrC7M2q0J9
+# EViNjJFc8gm68g0rXuSdUqcT1N2uaXSDnt2rRkblFA==
 # SIG # End signature block
