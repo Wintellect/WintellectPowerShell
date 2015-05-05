@@ -48,9 +48,6 @@ Here's the about text showing all cmdlets. Of course, all cmdlets have detailed 
 	        
 	    Get-Uptime                     Returns how long a computer has been running.
 	        
-	    Expand-ZipFile                 Expands a .ZIP file to the specified 
-	                                   directory.
-	
 	    Test-PathReg                   Utility function to test is a registry key 
 	                                   property exists in a key.
 	
@@ -82,6 +79,10 @@ Here's the about text showing all cmdlets. Of course, all cmdlets have detailed 
     	Set-Signatures                 Makes digitally signing files a lot easier by
                                    	   looking for the first non-Azure code signing 
                                        file and picking the timestamp server.
+
+        Get-DumpAnalysis               Automates analyzing a bunch of minidump  
+                                       files using CDB and debug scripts.
+
 	
 	SEE ALSO
 	    Online help and updates: 
