@@ -1,5 +1,8 @@
 # Wintellect PowerShell Change Log #
 
+## Current Release
+- Set-SymbolServer now uses the new https://msdl.microsoft.com/download/symbols for more security.
+
 ## May 4, 2015
 - Added Get-DumpAnalysis to automate minidump analysis easier.
 - Fixed a bug in Get-SourceServer and Get-SymbolServer.
