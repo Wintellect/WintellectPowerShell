@@ -21,19 +21,19 @@ $script:devFourteenDebuggerRegKey = "HKCU:\Software\Microsoft\VisualStudio\14.0\
 ###############################################################################
 # Module Only Functions
 ###############################################################################
-function CreateDirectoryIfNeeded ( [string] $directory )
+function CreateDirectoryIfNeeded ([string] $directory="")
 {
-	if ( ! ( Test-Path -Path $directory -type "Container" ) )
+	if ( ! (Test-Path -Path $directory -type "Container"))
 	{
 		New-Item -type directory -Path $directory > $null
 	}
 }
 
 # Just to hide PS errors when reading registry keys that don't exist.
-function SmartGetRegProperty($regKey,$regValue)
+function SmartGetRegProperty($regKey="",$regValue="")
 {
     $key = Get-ItemProperty -Path $regKey -Name $regValue -ErrorAction SilentlyContinue
-    if ($key -ne $null)
+    if ($null -ne $key)
     {
         return $key.$regValue
     }
@@ -41,7 +41,7 @@ function SmartGetRegProperty($regKey,$regValue)
 }
 
 # Reads the values from VS 2010+, and the environment.
-function GetCommonSettings($regValue, $envVariable)
+function GetCommonSettings($regValue="", $envVariable="")
 {
     $returnHash = @{}
     if (Test-Path -Path $devTenDebuggerRegKey)
@@ -61,7 +61,7 @@ function GetCommonSettings($regValue, $envVariable)
         $returnHash["VS 2015"] = SmartGetRegProperty -regKey $devFourteenDebuggerRegKey -regValue $regValue
     }
     $envVal = Get-ItemProperty -Path HKCU:\Environment -Name $envVariable -ErrorAction SilentlyContinue
-    if ($envVal -ne $null)
+    if ($null -ne $envVal)
     {
         $returnHash[$envVariable] = $envVal.$envVariable
     }
@@ -69,20 +69,24 @@ function GetCommonSettings($regValue, $envVariable)
 }
 
 # Makes doing ShouldProcess easier.
-function Set-ItemPropertyScript ( $path , $name , $value , $type )
+function Set-ItemPropertyScript 
 {
-    if ( $path -eq $null )
-    {
-        throw "Set-ItemPropertyScript path param cannot be null!"
-    }
-    if ( $name -eq $null )
-    {
-        throw "Set-ItemPropertyScript name param cannot be null!"
-    }
+    [CmdletBinding(SupportsShouldProcess=$true)]
+    param
+    (
+        [Parameter(Mandatory=$true)]
+        $path,
+        [Parameter(Mandatory=$true)] 
+        $name, 
+        [Parameter(Mandatory=$true)] 
+        $value,
+        $type=$null 
+    )
+
 	$propString = "Item: " + $path.ToString() + " Property: " + $name
 	if ($PSCmdLet.ShouldProcess($propString ,"Set Property"))
 	{
-        if ($type -eq $null)
+        if ($null -eq $type)
         {
 		  Set-ItemProperty -Path $path -Name $name -Value $value
         }
@@ -93,29 +97,29 @@ function Set-ItemPropertyScript ( $path , $name , $value , $type )
 	}
 }
 
-function SetInternalSymbolServer([string] $DbgRegKey , 
-                                 [string] $CacheDirectory ,
-                                 [string] $SymPath )
+function SetInternalSymbolServer([string] $DbgRegKey="", 
+                                 [string] $CacheDirectory="",
+                                 [string] $SymPath="")
 {
 
     CreateDirectoryIfNeeded -directory $CacheDirectory
     
     # Turn off Just My Code.
-    Set-ItemPropertyScript $dbgRegKey JustMyCode 0 DWORD
+    Set-ItemPropertyScript -Path $dbgRegKey -Name JustMyCode -Value 0 -Type DWORD
 
     # Turn off .NET Framework Source stepping.
-    Set-ItemPropertyScript $DbgRegKey FrameworkSourceStepping 0 DWORD
+    Set-ItemPropertyScript -Path $DbgRegKey -Name FrameworkSourceStepping -Value 0 DWORD
 
     # Turn off using the Microsoft symbol servers.
-    Set-ItemPropertyScript $DbgRegKey SymbolUseMSSymbolServers 0 DWORD
+    Set-ItemPropertyScript -Path $DbgRegKey -Name SymbolUseMSSymbolServers -Value 0 DWORD
 
     # Set the symbol cache dir to the same value as used in the environment
     # variable.
-    Set-ItemPropertyScript $DbgRegKey SymbolCacheDir $CacheDirectory
+    Set-ItemPropertyScript -Path $DbgRegKey -Name SymbolCacheDir -Value $CacheDirectory
 } 
 
-function SetPublicSymbolServer([string] $DbgRegKey , 
-                               [string] $CacheDirectory )
+function SetPublicSymbolServer([string] $DbgRegKey="", 
+                               [string] $CacheDirectory="")
 {
     CreateDirectoryIfNeeded -directory $CacheDirectory
         
@@ -309,7 +313,7 @@ https://github.com/Wintellect/WintellectPowerShell
     {
         # Go with the default of looking up WinDBG in the path.
         $windbg = Get-Command -Name windbg.exe -ErrorAction SilentlyContinue
-        if ($windbg -eq $null)
+        if ($null -eq $windbg)
         {
             throw "Please use the -SrcTool parameter or have WinDBG in the path"
         }
@@ -318,7 +322,7 @@ https://github.com/Wintellect/WintellectPowerShell
         $SrcTool = $windbgPath + "\SRCSRV\SRCTOOL.EXE"
     }
     
-    if ((Get-Command -Name $SrcTool -ErrorAction SilentlyContinue) -eq $null)
+    if ($null -eq (Get-Command -Name $SrcTool -ErrorAction SilentlyContinue))
     {
         throw "SRCTOOL.EXE does not exist."
     }
@@ -327,8 +331,6 @@ https://github.com/Wintellect/WintellectPowerShell
     {
         throw "The specified cache directory does not exist."
     }
-    
-    $cmd = $SrcTool
     
     # Get all the PDB files, execute SRCTOOL.EXE on each one.
     Get-ChildItem -Recurse -Include *.pdb -Path $cacheDirectory | `
@@ -381,14 +383,14 @@ http://www.wintellect.com/blogs/jrobbins
 https://github.com/Wintellect/WintellectPowerShell
 #>
     [CmdLetBinding(SupportsShouldProcess=$true)]
-    param ( [switch]   $Internal ,
-    		[switch]   $Public ,
-    		[string]   $CacheDirectory ,
-    		[string[]] $SymbolServers = @(),
+    param ( [switch]   $Internal,
+    		[switch]   $Public,
+    		[string]   $CacheDirectory="",
+    		[string[]] $SymbolServers=@(),
             [switch]   $CurrentEnvironmentOnly)
             
     # Do the parameter checking.
-    if ( $Internal -eq $Public )
+    if ($Internal -eq $Public)
     {
         throw "You must specify either -Internal or -Public"
     }
@@ -401,14 +403,14 @@ https://github.com/Wintellect/WintellectPowerShell
     
     if ($Internal)
     {
-    	if ( $CacheDirectory.Length -eq 0 )
+    	if ($CacheDirectory.Length -eq 0)
     	{
         	$CacheDirectory = "C:\SYMBOLS\INTERNAL" 
     	}
         
         $symPath = ""
 
-        for ( $i = 0 ; $i -lt $SymbolServers.Length ; $i++ )
+        for ($i = 0 ; $i -lt $SymbolServers.Length ; $i++)
         {
             $symPath += "SRV*$CacheDirectory*"
             $symPath += $SymbolServers[$i]
@@ -454,7 +456,7 @@ https://github.com/Wintellect/WintellectPowerShell
     else
     {
     
-        if ( $CacheDirectory.Length -eq 0 )
+        if ($CacheDirectory.Length -eq 0)
     	{
         	$CacheDirectory = "C:\SYMBOLS\PUBLIC" 
     	}
@@ -467,7 +469,7 @@ https://github.com/Wintellect/WintellectPowerShell
         
         # Poke on any additional symbol servers. I've keeping everything the
         # same between VS as WinDBG.
-    	for ( $i = 0 ; $i -lt $SymbolServers.Length ; $i++ )
+    	for ($i = 0 ; $i -lt $SymbolServers.Length ; $i++)
     	{
             $extraPaths += "SRV*$CacheDirectory*"
             $extraPaths += $SymbolServers[$i]
@@ -509,11 +511,11 @@ https://github.com/Wintellect/WintellectPowerShell
 
     if ($CurrentEnvironmentOnly)
     {
-        Write-Host -Object "`nThe _NT_SYMBOL_PATH environment variable was updated for this window only`n"
+        Write-Verbose -Message "`nThe _NT_SYMBOL_PATH environment variable was updated for this window only`n"
     }
     else
     {
-        Write-Host -Object "`nPlease log out to activate the new symbol server settings`n"
+        Write-Verbose -Message "`nPlease log out to activate the new symbol server settings`n"
     }
 }
 
@@ -521,8 +523,8 @@ https://github.com/Wintellect/WintellectPowerShell
 # SIG # Begin signature block
 # MIIYTQYJKoZIhvcNAQcCoIIYPjCCGDoCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUOYfVDrfOX5QBF/CM4hlWUroc
-# 0hygghM9MIIEhDCCA2ygAwIBAgIQQhrylAmEGR9SCkvGJCanSzANBgkqhkiG9w0B
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUZqGKKzf0UDEaWZmhs6DeENtK
+# At+gghM9MIIEhDCCA2ygAwIBAgIQQhrylAmEGR9SCkvGJCanSzANBgkqhkiG9w0B
 # AQUFADBvMQswCQYDVQQGEwJTRTEUMBIGA1UEChMLQWRkVHJ1c3QgQUIxJjAkBgNV
 # BAsTHUFkZFRydXN0IEV4dGVybmFsIFRUUCBOZXR3b3JrMSIwIAYDVQQDExlBZGRU
 # cnVzdCBFeHRlcm5hbCBDQSBSb290MB4XDTA1MDYwNzA4MDkxMFoXDTIwMDUzMDEw
@@ -630,23 +632,23 @@ https://github.com/Wintellect/WintellectPowerShell
 # A1UEAxMYQ09NT0RPIENvZGUgU2lnbmluZyBDQSAyAhBxf6ipIVuA0uBxRn4PGfDy
 # MAkGBSsOAwIaBQCgeDAYBgorBgEEAYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3
 # DQEJAzEMBgorBgEEAYI3AgEEMBwGCisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEV
-# MCMGCSqGSIb3DQEJBDEWBBTipbnJWdLgVQJPfu2+GHWAgFjrSjANBgkqhkiG9w0B
-# AQEFAASCAQBkYvsPjBCnfEYCs110qUJmTJ382D/x+STumRwRDzC3JuzZFyiv3vHn
-# kffmBCiYUIB7lEsoDpoqxMnyyQBDSN44miiuyBMe6y6CcHzyav4zp/tpQsXnL1Xh
-# GmXMOuRa/PVJ5Z3aMHj+9qKSPgAt6qZJZ1cAwuyx4P7O7QHrwXf6zto3LfLn+Hrb
-# XWs5P2zik+jPOLJToqtb4oiHdlkmPh53RqhDV4FD7wUViOqVPzHVBb16ZA/ty4gx
-# jzRvKSyA0kao46/5uL42uxj70GkJNpByvUI04LKHMb/GdzB4kHjQTVyjpbskNB5F
-# I/GMYSE8Qsaz/LiIz5q4TOmuCEHMaJ0woYICRTCCAkEGCSqGSIb3DQEJBjGCAjIw
+# MCMGCSqGSIb3DQEJBDEWBBTOLgKrJ9/Em4CuSUwV+a9h5LzqAjANBgkqhkiG9w0B
+# AQEFAASCAQC6D+fGPeeJHmguB0NEde2qEqpvSHcc0X4sza1RuSxKw4M6nyYvTueh
+# capsp3CEy6P1DShOY2yNBE/DdCOK9mBtk8qAyvyLfzrA58cv6hJLk89PCSQkPh6R
+# hP/nbbrt3fQE1PHylDy+74Ex1oTJXxe/IolfJLqFUBZiYqtDA6r1tmCXtc0jgX7G
+# QG6f6FPm9MOd9S3u6VO8puJwa1PgzkPrTg8oiVzjlZ7ky/5tHGlVGTQqeUIyisa8
+# xUWyFOYtzPuPGh0JLOq7cRp65X62miGZ0oBxcAPq8Ou4DvhdHpDW2XHDl4jI2J0u
+# Mr5oXs9p/oHcNfyuyxiGzMNMN4Rnx33KoYICRTCCAkEGCSqGSIb3DQEJBjGCAjIw
 # ggIuAgEAMIGrMIGVMQswCQYDVQQGEwJVUzELMAkGA1UECBMCVVQxFzAVBgNVBAcT
 # DlNhbHQgTGFrZSBDaXR5MR4wHAYDVQQKExVUaGUgVVNFUlRSVVNUIE5ldHdvcmsx
 # ITAfBgNVBAsTGGh0dHA6Ly93d3cudXNlcnRydXN0LmNvbTEdMBsGA1UEAxMUVVRO
 # LVVTRVJGaXJzdC1PYmplY3QCEQCf6sgRsPFiR6X8INgFI6zmMAkGBSsOAwIaBQCg
-# XTAYBgkqhkiG9w0BCQMxCwYJKoZIhvcNAQcBMBwGCSqGSIb3DQEJBTEPFw0xNTA2
-# MjUxNzQ3NDJaMCMGCSqGSIb3DQEJBDEWBBRoP1SGyW9qEI9LzFVxWCRdTsgUKjAN
-# BgkqhkiG9w0BAQEFAASCAQB2r6tb1w1+G7CI3U82hImPqPx+mAFikGP4yJlp9WgX
-# 7EHYud9kjbXZyjoVHSSzpsuxA8GK+DFXjGWUUaDG5rZU66/WqZaRPj2jK6vL9aCT
-# m95eCtCNmBgaNUKxaZhjoorg1RO8DAAFJeiyL9EwE46A4fT7UX96iJVE/+5pN8T7
-# qDn1dVFObXUKgNdVHAJ38/c3B1b0Dip//ak/WOhrvyuE3I27b848Xi6ibZA0llTk
-# cy+WSt5om9AqEgvcvujjCUtx3Ui+Sj9Jxs0JJxfNPJB2MSlHRHfB37yYFlb3MSPk
-# WFmW0xdsOxGO1nR90AjwXl063+XCLK0Bgo8HdObGwYpG
+# XTAYBgkqhkiG9w0BCQMxCwYJKoZIhvcNAQcBMBwGCSqGSIb3DQEJBTEPFw0xNTA3
+# MDkxNzIwMThaMCMGCSqGSIb3DQEJBDEWBBShkiMY80DjPRARBmzNPUxLMLf7RzAN
+# BgkqhkiG9w0BAQEFAASCAQAoH5imjbfVA+XUoCpNavDZFABBhgIJH/HfxcJIsipS
+# nWJCqoXrH4GESJGykuBjKocldbumpS2yEDmi1MkOLPTp19VpwGYssYuzOlFRRZzk
+# MsFVS+Nd6ZT6eFaqMD7cpIW3djXx+3z9h7xqmcPB2Lb480hCAUP5Xyh9f4wjMffj
+# 5MdnoEXD995t1zzTFDSvYsHPlYsO3bN6ra/6ZzXK2hkSm+ldERHLBPY0oxN4CXWV
+# 5fykFzX23yw1l7J9itFO+M+qOihRbeykPBdGeUaC+ZS2PmOKD16dWq/arxrhr46i
+# RAeigyGfzkswRz67p6Ij6KgcG0+5LYPrPLflyLBz0MZv
 # SIG # End signature block

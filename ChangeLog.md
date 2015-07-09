@@ -1,6 +1,11 @@
 # Wintellect PowerShell Change Log #
 
 ## Current Release
+- Fixed most of the errors reported by Invoke-ScriptAnalysis. Once RTM hits for PowerShell 5.0 I will fix the rest or suppress as appropriate.
+- Add-NgenPDBs now supports VS 2015
+- Fixed an issue in Compare-Directories where I removed stripping of the original and new directory paths when it was really needed. Sorry.
+
+## June 25, 2015
 - Set-SymbolServer now uses the new https://msdl.microsoft.com/download/symbols for more security.
 
 ## May 4, 2015
