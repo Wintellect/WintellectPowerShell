@@ -70,24 +70,37 @@ https://github.com/Wintellect/WintellectPowerShell
         "Latest" { $regVer = LatestVSRegistryKeyVersion }
     }
 
-    $regKey = "HKCU:\Software\Microsoft\VisualStudio\" + 
-              $regVer + 
-              "\DialogPage\Microsoft.VisualStudio.TraceLogPackage.ToolsOptionAdvanced"
+    [string]$storageDir = ""
+    $regKey = "HKCU:\SOFTWARE\Microsoft\VisualStudio\$regVer\ApplicationPrivateSettings\Microsoft\VisualStudio\TraceLogPackage\ToolsOptionAdvanced"
+
+    if ($regVer -lt "14.0")
+    {
+        $regKey = "HKCU:\Software\Microsoft\VisualStudio\" + 
+                  $regVer + 
+                  "\DialogPage\Microsoft.VisualStudio.TraceLogPackage.ToolsOptionAdvanced"
+    }
 
     # Check to see if the user has set the options to save files. If not bail out.
-    if ( ((Test-PathReg -Path $regKey -Property "SaveRecordings") -eq $false) -or ((Get-ItemProperty -Path $regKey).SaveRecordings -eq "False"))
+    if (((Test-PathReg -Path $regKey -Property "SaveRecordings") -eq $false) -or 
+        ((Get-ItemProperty -Path $regKey).SaveRecordings -match "False"))
     {
         throw "You have not configured IntelliTrace to save recordings. " +
-              "In the Options dialog, IntelliTtrace Advanced page, check the " +
-              "Store IntelliTrace recordings in this directory check box."
+                "In the Options dialog, IntelliTtrace Advanced page, check the " +
+                "Store IntelliTrace recordings in this directory check box."
     }
-    
-    $storageDir = ""
+
     if ((Test-PathReg -Path $regKey -Property "RecordingPath") -ne $false)
     {
         # Get the storage directory for those files.
         $storageDir = (Get-ItemProperty -Path $regKey).RecordingPath
     }
+
+    # If this is version 14.0 or greater it will have some gunk on the beginning.
+    if ($storageDir.StartsWith("1*System.String*"))
+    {
+        $storageDir = $storageDir.Substring("1*System.String*".Length)
+    }
+        
 
     if ($storageDir.Length -eq 0)
     {
@@ -108,8 +121,8 @@ https://github.com/Wintellect/WintellectPowerShell
 # SIG # Begin signature block
 # MIIYTQYJKoZIhvcNAQcCoIIYPjCCGDoCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUDJwgGooVNbdPCX5OQX/4Btdy
-# uAegghM9MIIEhDCCA2ygAwIBAgIQQhrylAmEGR9SCkvGJCanSzANBgkqhkiG9w0B
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU0Vc69sZvWsCKBLPdW2NDJqpt
+# Lu2gghM9MIIEhDCCA2ygAwIBAgIQQhrylAmEGR9SCkvGJCanSzANBgkqhkiG9w0B
 # AQUFADBvMQswCQYDVQQGEwJTRTEUMBIGA1UEChMLQWRkVHJ1c3QgQUIxJjAkBgNV
 # BAsTHUFkZFRydXN0IEV4dGVybmFsIFRUUCBOZXR3b3JrMSIwIAYDVQQDExlBZGRU
 # cnVzdCBFeHRlcm5hbCBDQSBSb290MB4XDTA1MDYwNzA4MDkxMFoXDTIwMDUzMDEw
@@ -217,23 +230,23 @@ https://github.com/Wintellect/WintellectPowerShell
 # A1UEAxMYQ09NT0RPIENvZGUgU2lnbmluZyBDQSAyAhBxf6ipIVuA0uBxRn4PGfDy
 # MAkGBSsOAwIaBQCgeDAYBgorBgEEAYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3
 # DQEJAzEMBgorBgEEAYI3AgEEMBwGCisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEV
-# MCMGCSqGSIb3DQEJBDEWBBQIUc76hnplg1akVdplbNzZ6vejlTANBgkqhkiG9w0B
-# AQEFAASCAQC0kEiY0A9U/CuemJOSqNdzqihOZMVnoGij/WmM7eN/BPp4lHtF87Fy
-# F9WJ+BRn0Y8fsomFdFTJxiruh/v0hxjvHUiJ5XFG6Xh4hfjyPppZOAieGOxYmnKk
-# fnh3zpXYvH1vuNgvabKezbD9YWtSGmnEzYTeztThRzPLz/QAOU57aLP7tVmTtYMv
-# xNSh6HGShF02eKCgpFk8AqXdcqNvYWp5nEh/O0I+EM86v7igGEzi6mbi8xsy140h
-# 2NJbSVekkmCxBUQMyEC6Ny1rRk53oX3IzMb2Nv2wyO32I5q5HShxIutGSZbCgWjX
-# l4t4qfMsBf0+3lc2JL7nfwcRjOZQi2lUoYICRTCCAkEGCSqGSIb3DQEJBjGCAjIw
+# MCMGCSqGSIb3DQEJBDEWBBQ67FtXxwwbVEgmk38toLykVa0fDDANBgkqhkiG9w0B
+# AQEFAASCAQCIfIf4p0c4mxw6mAwurXCZtQngVVYGxMJHzOr7k9fE6hzY1Hdws87J
+# zl/mmeF8WspvhJ3m8P9EUuMQJsSAWsn+Ven16RTS72K7GslVDkORWUnvThEasgp9
+# O00nxrME+afuFa/7O9th9bnMuREaRK9fzscRLms6I9Dmaz5x36RmY84orREkT+Mx
+# ubzLNonrGr3EMbNZLdpn/N8WVPwr+KX59IlnT5cY3EhUHKjkRx5uvIhZMsDRpMup
+# iO2qbGIXHr2h1lz3j9vZ9059ntiaFZADqVAWSIC8a0ub5wY2w0aU6mEGBq4zTIpJ
+# ti0/vJiulrmG0JWWmcVQM2WYgSD9EK0foYICRTCCAkEGCSqGSIb3DQEJBjGCAjIw
 # ggIuAgEAMIGrMIGVMQswCQYDVQQGEwJVUzELMAkGA1UECBMCVVQxFzAVBgNVBAcT
 # DlNhbHQgTGFrZSBDaXR5MR4wHAYDVQQKExVUaGUgVVNFUlRSVVNUIE5ldHdvcmsx
 # ITAfBgNVBAsTGGh0dHA6Ly93d3cudXNlcnRydXN0LmNvbTEdMBsGA1UEAxMUVVRO
 # LVVTRVJGaXJzdC1PYmplY3QCEQCf6sgRsPFiR6X8INgFI6zmMAkGBSsOAwIaBQCg
-# XTAYBgkqhkiG9w0BCQMxCwYJKoZIhvcNAQcBMBwGCSqGSIb3DQEJBTEPFw0xNTA3
-# MDkxNzIwMTJaMCMGCSqGSIb3DQEJBDEWBBTFfJZl0CnsZwjo6NgKTumF5+tJIjAN
-# BgkqhkiG9w0BAQEFAASCAQCc1jsUdsnQh64iYZ/nrWBkYi2N7YhWQrOkLc3zq8XN
-# A5MgJpYMRrl/JdsBOlbRDWGVcL82ScO+mmI1RbWakUw+mF2Z6zDQ2jp2eIcIlETb
-# 95JwQgz8tWDxdyUQb8DyWeAvujfnGEt2qF/IWb4lgcB13u+MDmWJDIr2lDBPjxtg
-# Hmyy2nUpebPaT8zmmioNPnqIZVbmwYQHPZYhgRLCQKrKzud8uVfKFlr7uDnTlnx5
-# eWov4Ur9CBE6JknbZ9OIk8d/7MYSGicvlp1KDlejafmCquGFA5W3I1qo3OIeoQ9U
-# jykfG3T9dx0dVZbYrUlFJRQ9j/gTLiq3UrQfiQ0sPgux
+# XTAYBgkqhkiG9w0BCQMxCwYJKoZIhvcNAQcBMBwGCSqGSIb3DQEJBTEPFw0xNTEw
+# MjIwMTMwMDNaMCMGCSqGSIb3DQEJBDEWBBSS/Dh83Sw57/PoxNUranqZL3mLgzAN
+# BgkqhkiG9w0BAQEFAASCAQCmGyCyZjWtf1/zaE2bsMJHk2ia6nvP1uHPf5tlKfHR
+# tJcBn9O3kbRKC+Q8qOGsUi5f0DTYPgp7NZchJyR2XAAqxKkr/dgjwApGQnIBLGBG
+# NJr7xvUILkpI8WFQGMptfkju6NP/G2iUiYLAy7IvRskbQBvsPs9zXKApwa60sSr2
+# H5qjJp/YMkvXIS57OvVOC8X1ds7tjMh88ORgJI8pS72Px5585IChuFAeT7idfYaF
+# N6GhYC7HQCTMPkGUO+sOy4djYsl1enXxN1Ggn8SJj42RS0oIkkoWalQPIJU3iYyW
+# 5bfqA+gLJ0LL6pgbr0/l0Q1tDODPwtgXVtR9a1zM+UyW
 # SIG # End signature block
