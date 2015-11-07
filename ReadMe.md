@@ -2,6 +2,10 @@
 
 After posting many random PowerShell scripts in my [blog ](http://www.wintellect.com/blogs/jrobbins), I packaged them up into a common module to make sharing and incorporating easier. Please fork and let me know if there's any bugs you find. I hope you find it useful.
 
+WintellectPowerShell is in the [PowerShell Gallery](https://www.powershellgallery.com/packages/WintellectPowerShell/). To install, execute the following command:
+
+	Install-Module -Name WintellectPowerShell -Scope CurrentUser
+
 Here's the about text showing all cmdlets. Of course, all cmdlets have detailed help for more information.
 
 	TOPIC
