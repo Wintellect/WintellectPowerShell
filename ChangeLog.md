@@ -1,6 +1,9 @@
 # Wintellect PowerShell Change Log #
 
 ## Current Release
+- Fixed issue in Import-VisualStudioEnvironment that if the C++ tools were not installed, falls back to using VSDEVCMD.BAT to set the environment. Because VSDEVCMD.BAT does not support command line arguments, you only get the 32-bit tools. Use the -Verbose switch to see if VSDEVCMD.BAT is used.
+
+## October 21, 2015
 - Fixed an issue in Remove-IntelliTraceFiles where it did not work on VS 2015.
 
 ## July 9, 2015
