@@ -8,7 +8,7 @@
 
 # Always make sure all variables are defined and all best practices are 
 # followed.
-Set-StrictMode  –version Latest 
+Set-StrictMode  â€“version Latest 
 
 ###############################################################################
 # Script Global Variables
@@ -263,39 +263,39 @@ http://code.wintellect.com
             # Enumerate through the property keys.
             foreach ($item in $newMainProps.GetEnumerator())
             {
-                switch ($item.Key)
+                if ($item.Key -eq "AssemblyOriginatorKeyFile")
                 {
-                    "AssemblyOriginatorKeyFile" 
+                    # Get the full path to the .SNK file specified.
+                    $snkFile = Resolve-Path -Path $item.Value -ErrorAction SilentlyContinue
+
+                    if ($null -eq $snkFile)
                     {
-                        # Get the full path to the .SNK file specified.
-                        $snkFile = Resolve-Path -Path $item.Value -ErrorAction SilentlyContinue
-
-                        if ($null -eq $snkFile)
-                        {
-                            [string]$inputFile = $item.Value
-                            throw "Unable to find $inputFile, Please specify the full path to the file."
-                        }
-
-                        ReplaceRelativePathNode -fileLocation $file `
-                                                -document $fileXML `
-                                                -topElement $mainProps `
-                                                -elementName "AssemblyOriginatorKeyFile" `
-                                                -fullUseFilePath $snkFile
-
-                        # In case the user forgot, set the option to use the SNK file also.
-                        ReplaceNode -document $fileXML `
-                                    -topElement $mainProps `
-                                    -elementName "SignAssembly" `
-                                    -elementValue "true"
+                        [string]$inputFile = $item.Value
+                        throw "Unable to find $inputFile, Please specify the full path to the file."
                     }
 
-                    default
-                    {
-                        ReplaceNode -document $fileXML `
-                                    -topElement $mainProps `
-                                    -elementName $item.Key `
-                                    -elementValue $item.Value
-                    }
+                    ReplaceRelativePathNode -fileLocation $file `
+                                            -document $fileXML `
+                                            -topElement $mainProps `
+                                            -elementName "AssemblyOriginatorKeyFile" `
+                                            -fullUseFilePath $snkFile
+
+                    # In case the user forgot, set the option to use the SNK file also.
+                    ReplaceNode -document $fileXML `
+                                -topElement $mainProps `
+                                -elementName "SignAssembly" `
+                                -elementValue "true"
+                }
+                elseif ($item.Value -is [scriptblock])
+                {
+                    & $item.Value $mainProps
+                }
+								else
+                {
+                    ReplaceNode -document $fileXML `
+                                -topElement $mainProps `
+                                -elementName $item.Key `
+                                -elementValue $item.Value
                 }
             }
         }
