@@ -1,0 +1,20 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "0.1.0",
+    "command": "${env.windir}\\sysnative\\windowspowershell\\v1.0\\PowerShell.exe",
+    "isShellCommand": true,
+    "args": ["-NoProfile", "-ExecutionPolicy", "RemoteSigned"],
+    "showOutput": "always",
+    "tasks": [
+        {
+            "taskName": "ScriptAnalyzer",
+             "isBuildCommand": true,
+            "suppressTaskName": true,
+            "args": [
+                "Write-Host 'This takes a while...'; Import-Module PSScriptAnalyzer; Get-ChildItem *.ps* -Recurse | ForEach-Object {Invoke-ScriptAnalyzer $_.FullName}; Write-Host 'Script Analysis Finished!'"
+            ]
+        }
+    ]
+
+}

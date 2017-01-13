@@ -7,11 +7,11 @@ SHORT DESCRIPTION
            
 LONG DESCRIPTION
     This module makes setting up symbol servers and source server debugging 
-    functionality easier to control for Visual Studio 2010 through 2015 
+    functionality easier to control for Visual Studio 2013 through 2017 
     and WinDBG. Setting up a development machine for symbol server 
 	access is more difficult than it needs to be but no more.
     
-    You can have any combination of Visual Studio 2010 through 2015, and
+    You can have any combination of Visual Studio 2013 through 2017, and
     WinDBG on the computer for these cmdlets to work.
     
     These cmdlets had been originally developed as PowerShell scripts by John 
@@ -25,6 +25,10 @@ LONG DESCRIPTION
 
     Cmdlet                         Description
     ------------------             ----------------------------------------------
+    Set-SymbolAndSourceServer      Sets up a computer to use a symbol and source
+                                   server. (Combines Set-SymbolServer and 
+                                   Set-Source Server)
+    
     Set-SymbolServer               Sets up a computer to use a symbol server.
         
     Get-SymbolServer               Returns a hashtable of the current symbol 
@@ -42,9 +46,6 @@ LONG DESCRIPTION
         
     Get-Uptime                     Returns how long a computer has been running.
         
-    Expand-ZipFile                 Expands a .ZIP file to the specified 
-                                   directory.
-
     Test-PathReg                   Utility function to test is a registry key 
                                    property exists in a key.
 
@@ -69,7 +70,7 @@ LONG DESCRIPTION
                                    the current PowerShell instance.
 
     Import-VisuaStudioEnvironment  Executes the specified Visual Studio 
-                                   VCVARSALL.BAT file importing the environment
+                                   environment batch file importing the environment
                                    variables into PowerShell for command line
                                    usage.
 
@@ -82,6 +83,6 @@ LONG DESCRIPTION
 
 SEE ALSO
     Online help and updates: 
-            http://www.wintellect.com/blogs/jrobbins
+            http://www.wintellect.com/devcenter/author/jrobbins
     GitHub repository      : 
             https://github.com/Wintellect/WintellectPowerShell

@@ -1,6 +1,6 @@
 # Wintellect PowerShell Module #
 
-After posting many random PowerShell scripts in my [blog ](http://www.wintellect.com/blogs/jrobbins), I packaged them up into a common module to make sharing and incorporating easier. Please fork and let me know if there's any bugs you find. I hope you find it useful.
+After posting many random PowerShell scripts in my [blog ](http://www.wintellect.com/devcenter/author/jrobbins), I packaged them up into a common module to make sharing and incorporating easier. Please fork and let me know if there's any bugs you find. I hope you find it useful.
 
 WintellectPowerShell is in the [PowerShell Gallery](https://www.powershellgallery.com/packages/WintellectPowerShell/). To install, execute the following command:
 
@@ -16,25 +16,30 @@ Here's the about text showing all cmdlets. Of course, all cmdlets have detailed 
 	    functionality related to debugging and performance tuning.
 	           
 	LONG DESCRIPTION
-	    This module makes setting up symbol servers and source server debugging 
-	    functionality easier to control for Visual Studio 2010 through 2015 
-	    and WinDBG. Setting up a development machine for symbol server 
+		This module makes setting up symbol servers and source server debugging 
+		functionality easier to control for Visual Studio 2013 through 2017 
+		and WinDBG. Setting up a development machine for symbol server 
 		access is more difficult than it needs to be but no more.
-	    
-	    You can have any combination of Visual Studio 2010 through 2015, and
-	    WinDBG on the computer for these cmdlets to work.
-	    
-	    These cmdlets had been originally developed as PowerShell scripts by John 
-	    Robbins and released on his blog. This module combines all the seperate 
-	    scripts to make everything easier to manage.
-	    
-	    If you have any questions, suggestions, or bug reports, please contact John 
-	    at john@wintellect.com.
-	                 
-	    The following cmdlets are included.
+		
+		You can have any combination of Visual Studio 2013 through 2017, and
+		WinDBG on the computer for these cmdlets to work.
+		
+		These cmdlets had been originally developed as PowerShell scripts by John 
+		Robbins and released on his blog. This module combines all the seperate 
+		scripts to make everything easier to manage.
+		
+		If you have any questions, suggestions, or bug reports, please contact John 
+		at john@wintellect.com.
+					
+		The following cmdlets are included.
+
 	
 	    Cmdlet                         Description
 	    ------------------             ----------------------------------------------
+		Set-SymbolAndSourceServer      Sets up a computer to use a symbol and source
+									   server. (Combines Set-SymbolServer and 
+									   Set-Source Server)
+
 	    Set-SymbolServer               Sets up a computer to use a symbol server.
 	        
 	    Get-SymbolServer               Returns a hashtable of the current symbol 
@@ -90,6 +95,6 @@ Here's the about text showing all cmdlets. Of course, all cmdlets have detailed 
 	
 	SEE ALSO
 	    Online help and updates: 
-	            http://www.wintellect.com/blogs/jrobbins
+	            http://www.wintellect.com/devcenter/author/jrobbins
 	    GitHub repository      : 
 	            https://github.com/Wintellect/WintellectPowerShell

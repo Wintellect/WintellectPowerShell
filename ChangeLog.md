@@ -1,6 +1,16 @@
 # Wintellect PowerShell Change Log #
 
-## Current Release
+## Version Current
+- PowerShell 5.0 is now the minimum supported version. It's time to upgrade people. 
+- Dropped support for any versions prior to VS 2013. Continue to use WintellectPowerShell 3.3.2.0 for older versions of Visual Studio.
+- Completely rewrote everything in SymbolsSource.ps1. With VS 2017 no longer using the global registry to save settings, I had to make the changes in the CurrentSettings.vssettings file. This change works for VS2013-VS2017. The only difference you will notice is that after running WintellectPowerShell cmdlets is that you will see Visual Studio show the quick dialog that it is loading settings.
+- Added the Set-SymbolAndSourceServer cmdlet. This combines both Set-SymbolServer and Set-SourceServer (which both still exist) because you really should set both at once.
+- Updated Import-VisualStudioEnvironment to work with VS 2017 as Microsoft changed how the environment batch files worked.
+- Updated Remove-IntelliTrace files to support VS 2017. That was a lot of work because Visual Studio 2017's installation is now complex enough that it requires an API to determine what's installed. Also, VS 2017 moved to private registry hives for performance reasons. I introduced a support DLL written in C# to isolate this complexity.
+- Updated Add-NgenPdbs to work with VS 2017.
+- Fixed all warnings reported by Invoke-ScriptAnalysis (version 1.9.0).
+
+## November 16, 2015
 - Fixed issue in Import-VisualStudioEnvironment that if the C++ tools were not installed, falls back to using VSDEVCMD.BAT to set the environment. Because VSDEVCMD.BAT does not support command line arguments, you only get the 32-bit tools. Use the -Verbose switch to see if VSDEVCMD.BAT is used.
 
 ## October 21, 2015
@@ -17,7 +27,6 @@
 ## May 4, 2015
 - Added Get-DumpAnalysis to automate minidump analysis easier.
 - Fixed a bug in Get-SourceServer and Get-SymbolServer.
-
 
 ## December 27, 2014
 Small updates
