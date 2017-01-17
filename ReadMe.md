@@ -6,6 +6,8 @@ WintellectPowerShell is in the [PowerShell Gallery](https://www.powershellgaller
 
 	Install-Module -Name WintellectPowerShell -Scope CurrentUser
 
+If you had a previous version of WintellectPowerShell installed and you get an error about the 'Authenticode issuer' that is because I had to renew my code signature file. Add the -SkipPublisherCheck to the above command. All required files are properly digitally signed.
+
 Here's the about text showing all cmdlets. Of course, all cmdlets have detailed help for more information.
 
 	TOPIC
