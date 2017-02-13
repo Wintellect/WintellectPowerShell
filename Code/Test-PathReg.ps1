@@ -52,7 +52,7 @@ http://blogs.msdn.com/candede
         return $false
     }
     
-    $compare = $gpiReturn.psbase.members  | `
+    $compare = $gipReturn.psbase.members  | `
                     ForEach-Object {$_.name} | `
                     Compare-Object $Property -IncludeEqual -ExcludeDifferent
     if($null -eq $compare)
