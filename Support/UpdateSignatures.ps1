@@ -1,0 +1,1 @@
+Get-ChildItem -Recurse ..\*.ps* -Exclude *Support* | Get-AuthenticodeSignature | Where-Object { $_.Status -eq "HashMismatch"} | Select-Object Path | ForEach-Object { $_.Path } | Set-Signatures

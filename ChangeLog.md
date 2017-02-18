@@ -1,6 +1,10 @@
 # Wintellect PowerShell Change Log #
 
-## Version Current
+## Current Version
+- Fixed a bug with Get-SysInternalsSuite where I needed to add the -Force option when expanding the zip file to force extration into a directory with the existing tools files.
+- Thanks to [bojanrajkovic](https://github.com/bojanrajkovic) as he fixed an issue it Test-Path: https://github.com/Wintellect/WintellectPowerShell/pull/8
+
+## 4.0.0.1
 - PowerShell 5.0 is now the minimum supported version. It's time to upgrade people. 
 - Dropped support for any versions prior to VS 2013. Continue to use WintellectPowerShell 3.3.2.0 for older versions of Visual Studio.
 - Completely rewrote everything in SymbolsSource.ps1. With VS 2017 no longer using the global registry to save settings, I had to make the changes in the CurrentSettings.vssettings file. This change works for VS2013-VS2017. The only difference you will notice is that after running WintellectPowerShell cmdlets is that you will see Visual Studio show the quick dialog that it is loading settings.
