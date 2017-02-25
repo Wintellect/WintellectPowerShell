@@ -92,7 +92,8 @@ https://github.com/Wintellect/WintellectPowerShell
         $biggest = 0.0
         Get-RegistryKeyPropertiesAndValues $versionSearchKey  | 
             ForEach-Object { 
-                                if ([System.Convert]::ToDecimal($_.Property) -gt [System.Convert]::ToDecimal($biggest))
+                                if ([System.Convert]::ToDecimal($_.Property, [CultureInfo]::InvariantCulture) -gt `
+                                    [System.Convert]::ToDecimal($biggest, [CultureInfo]::InvariantCulture))
                                 {
                                     $biggest = $_.Property
                                     $vsDirectory = $_.Value 
@@ -111,7 +112,7 @@ https://github.com/Wintellect/WintellectPowerShell
                         default { throw "Unknown version of Visual Studio!" }
                     }
 
-        $usingVersion = [System.Convert]::ToDecimal($propVal)
+        $usingVersion = [System.Convert]::ToDecimal($propVal, [CultureInfo]::InvariantCulture)
 
         if (Test-PathReg -Path $versionSearchKey -Property $propVal)
         {
