@@ -132,7 +132,7 @@ function Set-ItemPropertyScript
     $cacheDir.Node.InnerText = $CacheDirectory
 }
 
- function SetPublicSymbolServer([xml]$settings, $cacheDirectory, $symPath)
+ function SetPublicSymbolServer([xml]$settings, $cacheDirectory, $symPath, $vsVersion)
  {
     CreateDirectoryIfNeeded -directory $CacheDirectory
 
@@ -182,6 +182,14 @@ function Set-ItemPropertyScript
     $xPathLookup = $script:dbgPropertyXPath -f "SymbolCacheDir"
     $cacheDir = $settings | Select-Xml -XPath $xPathLookup
     $cacheDir.Node.InnerText = $CacheDirectory
+
+    # Turn on the SourceLinking option new to VS 2017.
+    if ($vsVersion -ge "2017")
+    {
+        $xPathLookup = $script:dbgPropertyXPath -f "UseSourceLink"
+        $ssDiag = $settings | Select-Xml -XPath $xPathLookup
+        $ssDiag.Node.InnerText = "1"
+    }
 }
 
 ###############################################################################
@@ -344,7 +352,8 @@ This switch is intended for internal Microsoft use only. You must specify either
 .PARAMETER Public
 Sets the symbol server to use as the two public symbol servers from Microsoft. 
 All the appropriate settings are configured to properly have .NET Reference 
-Source stepping working.
+Source stepping working and for VS 2017 and above, Source Linking turned on
+so you can debug GitHub-based repositories, like .NET Core, etc.
 
 .PARAMETER CacheDirectory
 Defaults to C:\SYMBOLS\PUBLIC for -Public and C:\SYMBOLS\INTERNAL for -Internal.
@@ -358,7 +367,7 @@ environment variable and Visual Studio have the same search order.
 .PARAMETER CurrentEnvironmentOnly
 If specified will only set the current PowerShell window _NT_SYMBOL_PATH 
 environment variable and not overwrite the global settings. This is primarily
-for use with WinDBG as Visual Studio requires registry settings for the
+for use with WinDBG as Visual Studio requires settings files for the
 cache directory.
 
 .LINK
@@ -470,7 +479,7 @@ https://github.com/Wintellect/WintellectPowerShell
                 {
                     if ($PSCmdlet.ShouldProcess("VS "+ $script:vsVersionArray[$i], "Symbol Server settings for public usage"))
                     {
-                        SetPublicSymbolServer $settings $CacheDirectory $envPath
+                        SetPublicSymbolServer $settings $CacheDirectory $envPath $script:vsVersionArray[$i]
 
                         WriteSettingsFile $script:vsVersionArray[$i] $settings
                     }
@@ -632,8 +641,8 @@ https://github.com/Wintellect/WintellectPowerShell
 # SIG # Begin signature block
 # MIIUywYJKoZIhvcNAQcCoIIUvDCCFLgCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU4m79foyVB9Hi5lhVBYufkts5
-# Ctaggg+6MIIEmTCCA4GgAwIBAgIPFojwOSVeY45pFDkH5jMLMA0GCSqGSIb3DQEB
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUSuGi+KKJWA7wS5bKuvdgdtJB
+# aTCggg+6MIIEmTCCA4GgAwIBAgIPFojwOSVeY45pFDkH5jMLMA0GCSqGSIb3DQEB
 # BQUAMIGVMQswCQYDVQQGEwJVUzELMAkGA1UECBMCVVQxFzAVBgNVBAcTDlNhbHQg
 # TGFrZSBDaXR5MR4wHAYDVQQKExVUaGUgVVNFUlRSVVNUIE5ldHdvcmsxITAfBgNV
 # BAsTGGh0dHA6Ly93d3cudXNlcnRydXN0LmNvbTEdMBsGA1UEAxMUVVROLVVTRVJG
@@ -722,23 +731,23 @@ https://github.com/Wintellect/WintellectPowerShell
 # IExpbWl0ZWQxIzAhBgNVBAMTGkNPTU9ETyBSU0EgQ29kZSBTaWduaW5nIENBAhEA
 # +CGT8y+uLXmA2UBOFe5VGzAJBgUrDgMCGgUAoHgwGAYKKwYBBAGCNwIBDDEKMAig
 # AoAAoQKAADAZBgkqhkiG9w0BCQMxDAYKKwYBBAGCNwIBBDAcBgorBgEEAYI3AgEL
-# MQ4wDAYKKwYBBAGCNwIBFTAjBgkqhkiG9w0BCQQxFgQUxnrNAGUhQ+gOqqS5fK5r
-# h7IvdQ4wDQYJKoZIhvcNAQEBBQAEggEAl1FUoqY9nn8ryPYzzcIXnhz2bfV25SkQ
-# dVAQkQaKe9p8pu2Ay8LPF/no2CSf9lYY57ILDT/LS3vKPt/asxD7rgi80Nue/rhd
-# mGN92+CVBv9Tm911fdJm6iURSTvFpsMn5aWvBe4uqIA59TgL1h9Oxd1yYzoN/537
-# QsQO0ydLHIvVQGC+xZcdjYPA2gmSeXpWEVz+uGPPkIqGUQ1r5PHk0pdlb/Hcjlz4
-# NhUgcfue8bV1mx6P1oUOqnclP8CvUdvkFxGZMKNhSfRBJ780ZIgfBoVMFzacGwQj
-# VzKJ+T5up49CkqNnlp+WUHzFyfzcsAlS4rY4z3IKEgfg9lRAaWUNtqGCAkMwggI/
-# BgkqhkiG9w0BCQYxggIwMIICLAIBADCBqTCBlTELMAkGA1UEBhMCVVMxCzAJBgNV
+# MQ4wDAYKKwYBBAGCNwIBFTAjBgkqhkiG9w0BCQQxFgQUBDGLLv6NedAy/CnSAWXV
+# KeeVaH4wDQYJKoZIhvcNAQEBBQAEggEAjliMcs/L+7u7frv/sONu953tNOFjmnmv
+# OxwbhL/RijnQ3LHiP6iKqWufkW7d0yuc+fm9N1jeymqp6WmLc9H/kP2DRQlD5T5s
+# fsAc9tmcpP2pcIjvGczL0vwERODXFLilE9foJecJJD/JdbfgjjLWzsznsFmSiM3P
+# G53Y2y/pXCFy12rm3YMvceDbeYjd3shmTRoe8RD1Blv96qdPw8+hB+MFKpAosE4l
+# ckglvVjsvsFAJPzVlvmsBhdsbaS2JkFMQUl3yGV3tWQ6sx/agloFzVXJpIbCpvuR
+# KGMnT1uRNhPu8KD5YkRlci4a/6gQxt+2GsbBFZVgCCcU4H/RaPaMIaGCAkMwggI/
+# BgkqhkiG9w0BCQYxggIwMIICLAIBATCBqTCBlTELMAkGA1UEBhMCVVMxCzAJBgNV
 # BAgTAlVUMRcwFQYDVQQHEw5TYWx0IExha2UgQ2l0eTEeMBwGA1UEChMVVGhlIFVT
 # RVJUUlVTVCBOZXR3b3JrMSEwHwYDVQQLExhodHRwOi8vd3d3LnVzZXJ0cnVzdC5j
 # b20xHTAbBgNVBAMTFFVUTi1VU0VSRmlyc3QtT2JqZWN0Ag8WiPA5JV5jjmkUOQfm
 # MwswCQYFKw4DAhoFAKBdMBgGCSqGSIb3DQEJAzELBgkqhkiG9w0BBwEwHAYJKoZI
-# hvcNAQkFMQ8XDTE3MDExMjIzMDczNFowIwYJKoZIhvcNAQkEMRYEFPpbnjG9ZVxJ
-# sV69QVROGoFwUybHMA0GCSqGSIb3DQEBAQUABIIBAH+Pmoye1dzvJuT32HlR1ZvP
-# Kd5NTMb9aFDps1+lzRCvZx+zkK8jX9CAPuTkxbg6SXy/QsWomO7J3YI0yL2doweH
-# fWoMp7BrkboLtnJSsDsnO4o60ZXCV4svo1nAD5FyXckgoAyBdI3wv14Zk5BdI3xJ
-# VIWtPrJLsJ+JMTYRBddEOiUw2y+sSHCxOYQTCt7xrLYzImkDuaFkxr9bcvfosx6r
-# GyTMcL35xLLC91LjeLWzMx7BEjqkspP8z5T/hq6xLDDzSnvA7xsi41cN5MtBlEyL
-# Uxn+lSXH7nS20knS1qjkcwz8/pQNPetAroHkLokMmJWKdIMwnsmeWjBwjkrXyfI=
+# hvcNAQkFMQ8XDTE3MTIyMDIwMjUwMVowIwYJKoZIhvcNAQkEMRYEFOC4JDfKoI52
+# RchFiM735/M70X5AMA0GCSqGSIb3DQEBAQUABIIBACraObHBWueI84hEe6WvAwSw
+# LcsvXSrHBlnmrFsvJf0YMgCAonG6NUrPaIiWAiNy901/rf4Pn/4kadmfG/o79tZI
+# tHaMUXP0nLJLm11QapFeZ0JHLj3Z7KrZLHeQSYnCACGwwnllZ+bqjrwT0KcZahf1
+# yJW6YI6pUilley9TtEkpaSx/Qp5HKGzzESuf7o0+dnxce6Tr5w2PMgjjV9t9L2YP
+# rq+f9koTCha71sEbT2aFmRigMyyXg+aUfqUwxXjJB/PC6cAPLUHPZAhc8OXeVW+u
+# Z3em63Z44Zw8N9X1/KNult8fzlEoNHfmdNAeDZIpa0czTkXsCKNtssQbAsHQX7s=
 # SIG # End signature block

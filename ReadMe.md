@@ -18,29 +18,29 @@ Here's the about text showing all cmdlets. Of course, all cmdlets have detailed 
 	    functionality related to debugging and performance tuning.
 	           
 	LONG DESCRIPTION
-		This module makes setting up symbol servers and source server debugging 
-		functionality easier to control for Visual Studio 2013 through 2017 
-		and WinDBG. Setting up a development machine for symbol server 
-		access is more difficult than it needs to be but no more.
+        This module makes setting up symbol servers and source server debugging 
+        functionality easier to control for Visual Studio 2013 through 2017 
+        and WinDBG. Setting up a development machine for symbol server 
+        access is more difficult than it needs to be but no more.
 		
-		You can have any combination of Visual Studio 2013 through 2017, and
-		WinDBG on the computer for these cmdlets to work.
+        You can have any combination of Visual Studio 2013 through 2017, and
+        WinDBG on the computer for these cmdlets to work.
 		
-		These cmdlets had been originally developed as PowerShell scripts by John 
-		Robbins and released on his blog. This module combines all the seperate 
-		scripts to make everything easier to manage.
+        These cmdlets had been originally developed as PowerShell scripts by John 
+        Robbins and released on his blog. This module combines all the separate 
+        scripts to make everything easier to manage.
 		
-		If you have any questions, suggestions, or bug reports, please contact John 
-		at john@wintellect.com.
+        If you have any questions, suggestions, or bug reports, please contact John 
+        at john@wintellect.com.
 					
-		The following cmdlets are included.
+        The following cmdlets are included.
 
 	
 	    Cmdlet                         Description
 	    ------------------             ----------------------------------------------
-		Set-SymbolAndSourceServer      Sets up a computer to use a symbol and source
-									   server. (Combines Set-SymbolServer and 
-									   Set-Source Server)
+        Set-SymbolAndSourceServer      Sets up a computer to use a symbol and source
+	                                   server. (Combines Set-SymbolServer and 
+                                       Set-Source Server)
 
 	    Set-SymbolServer               Sets up a computer to use a symbol server.
 	        
@@ -82,12 +82,12 @@ Here's the about text showing all cmdlets. Of course, all cmdlets have detailed 
 	                                   environment variables set in the script to 
 	                                   the current PowerShell instance.
 	
-	    Import-VisuaStudioEnvironment  Executes the specified Visual Studio 
+	    Import-VisualStudioEnvironment Executes the specified Visual Studio 
 	                                   VCVARSALL.BAT file importing the environment
 	                                   variables into PowerShell for command line
 	                                   usage.
 
-    	Set-Signatures                 Makes digitally signing files a lot easier by
+        Set-Signatures                 Makes digitally signing files a lot easier by
                                    	   looking for the first non-Azure code signing 
                                        file and picking the timestamp server.
 

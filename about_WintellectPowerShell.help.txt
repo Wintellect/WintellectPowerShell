@@ -15,7 +15,7 @@ LONG DESCRIPTION
     WinDBG on the computer for these cmdlets to work.
     
     These cmdlets had been originally developed as PowerShell scripts by John 
-    Robbins and released on his blog. This module combines all the seperate 
+    Robbins and released on his blog. This module combines all the separate 
     scripts to make everything easier to manage.
     
     If you have any questions, suggestions, or bug reports, please contact John 
@@ -69,7 +69,7 @@ LONG DESCRIPTION
                                    environment variables set in the script to 
                                    the current PowerShell instance.
 
-    Import-VisuaStudioEnvironment  Executes the specified Visual Studio 
+    Import-VisualStudioEnvironment Executes the specified Visual Studio 
                                    environment batch file importing the environment
                                    variables into PowerShell for command line
                                    usage.
