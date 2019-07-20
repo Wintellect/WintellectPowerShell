@@ -50,7 +50,7 @@ This will run the commands in BasicAnalysis.txt on MyMiniDump.dmp and the output
 writting to MyMiniDump.dmp-BasicAnalysis.txt.log
 
 .EXAMPLE
-Get-ChildItem *.dmp | Get-DumpAnalsys -DebuggingScript .\MoreStuff.txt
+Get-ChildItem *.dmp | Get-DumpAnalysis -DebuggingScript .\MoreStuff.txt
 
 For all mini dump files will be piped to Get-DumpAnalysis and have the debug script 
 MoreStuff.txt run on each one.
