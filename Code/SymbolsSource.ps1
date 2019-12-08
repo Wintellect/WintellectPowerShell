@@ -14,7 +14,7 @@ Set-StrictMode -version Latest
 # Script Global Variables
 ###############################################################################
 # The array that contains all the versions.
-$script:vsVersionArray = "2012", "2013", "2015", "2017" 
+$script:vsVersionArray = "2012", "2013", "2015", "2017", "2019"
 
 ###############################################################################
 # Module Only Functions

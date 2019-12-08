@@ -1,4 +1,4 @@
-﻿#requires -version 5.0
+#requires -version 5.0
 ###############################################################################
 # WintellectPowerShell Module
 # Copyright (c) 2010-2017 - John Robbins/Wintellect
@@ -66,7 +66,7 @@ https://github.com/Wintellect/WintellectPowerShell
     param
     (
         [Parameter(Position=0)]
-        [ValidateSet("Latest", "2013", "2015", "2017")]
+        [ValidateSet("Latest", "2013", "2015", "2017", "2019")]
         [string] $VSVersion = "Latest", 
         [Parameter(Position=1)]
         [ValidateSet("x86", "amd64", "arm")]
@@ -109,6 +109,7 @@ https://github.com/Wintellect/WintellectPowerShell
                         "2013" { "12.0" }
                         "2015" { "14.0" }
                         "2017" { "15.0" }
+                        "2019" { "16.0" }
                         default { throw "Unknown version of Visual Studio!" }
                     }
 
