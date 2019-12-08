@@ -93,19 +93,33 @@ function Get-RegistryKeyPropertiesAndValues
 
 function LatestVSRegistryKeyVersion
 {
+    # 2017+
+    $vswherePath = "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe"
+    # 2017 and older
     $versionSearchKey = "HKLM:\SOFTWARE\Wow6432Node\Microsoft\VisualStudio\SxS\VS7"
     if ([IntPtr]::size -ne 8)
     {
         $versionSearchKey = "HKLM:\SOFTWARE\Microsoft\VisualStudio\SxS\VS7"    
     }
     $biggest = 0.0
-    Get-RegistryKeyPropertiesAndValues $versionSearchKey  | 
-        ForEach-Object { 
-                            if ([System.Convert]::ToDecimal($_.Property) -gt [System.Convert]::ToDecimal($biggest))
-                            {
-                                $biggest = $_.Property
-                            }
-                        }  
+    if (Test-Path -PathType Leaf $vswherePath)
+    {
+        $latestVSInfo = & $vswherePath -latest -legacy -format json | ConvertFrom-Json
+        if ($latestVSInfo)
+        {
+            $biggest = [System.Convert]::ToDecimal(($latestVSInfo.installationVersion -replace "^(\d+\.\d+)[^\d].*", "`$1"), [CultureInfo]::InvariantCulture)
+        }
+    }
+    else
+    {
+        Get-RegistryKeyPropertiesAndValues $versionSearchKey  | 
+            ForEach-Object { 
+                                if ([System.Convert]::ToDecimal($_.Property) -gt [System.Convert]::ToDecimal($biggest))
+                                {
+                                    $biggest = $_.Property
+                                }
+                            }  
+    }
 
     $biggest
 }
