@@ -1,4 +1,4 @@
-#requires -version 5.0
+﻿#requires -version 5.0
 ###############################################################################
 # WintellectPowerShell Module
 # Copyright (c) 2010-2017 - John Robbins/Wintellect
@@ -36,7 +36,7 @@ VS110COMNTOOLS.
 .PARAMETER VSVersion
 The version of Visual Studio you want to use. If left to the default, Latest, the
 script will look for the latest version of Visual Studio installed on the computer
-as the tools to use. Specify 2013, 2015, or 2017 for a specific version.
+as the tools to use. Specify 2013, 2015, 2017, or 2019 for a specific version.
 
 .PARAMETER Architecture
 The tools architecture to use. This defaults to the $env:PROCESSOR_ARCHITECTURE 
