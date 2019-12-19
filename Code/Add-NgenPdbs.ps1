@@ -84,47 +84,55 @@ https://github.com/Wintellect/WintellectPowerShell
         }
 
         $vsVersion = $null
-        $symPath = $symServs["VS 2017"]
+        $symPath = $symServs["VS 2019"]
         if ($null -eq $symPath)
         {
-            $symPath = $symServs["VS 2015"]
+            $symPath = $symServs["VS 2017"]
             if ($null -eq $symPath)
             {
-                $symPath = $symServs["VS 2013"]
+                $symPath = $symServs["VS 2015"]
                 if ($null -eq $symPath)
                 {
-                    # Pull it out of _NT_SYMBOL_PATH. Yes this is only looking at the
-                    # first cache directory specified.
-                    $symPath = $symServs["_NT_SYMBOL_PATH"]
+                    $symPath = $symServs["VS 2013"]
                     if ($null -eq $symPath)
                     {
-                        throw "No symbol server configured"
-                    }
-                    else
-                    {
-                        if ($symPath -match "SRV\*(?<SymCache>[^*]*)\*(?:.*)\;?")
+                        # Pull it out of _NT_SYMBOL_PATH. Yes this is only looking at the
+                        # first cache directory specified.
+                        $symPath = $symServs["_NT_SYMBOL_PATH"]
+                        if ($null -eq $symPath)
                         {
-                            $symPath = $Matches["SymCache"]
+                            throw "No symbol server configured"
                         }
                         else
                         {
-                            throw "_NT_SYMBOL_PATH environment variable does not specify a symbol cache"
+                            if ($symPath -match "SRV\*(?<SymCache>[^*]*)\*(?:.*)\;?")
+                            {
+                                $symPath = $Matches["SymCache"]
+                            }
+                            else
+                            {
+                                throw "_NT_SYMBOL_PATH environment variable does not specify a symbol cache"
+                            }
                         }
+                    }
+                    else
+                    {
+                        $vsVersion = "2013"
                     }
                 }
                 else
                 {
-                    $vsVersion = "2013"
+                    $vsVersion = "2015"
                 }
             }
             else
             {
-                $vsVersion = "2015"
+                $vsVersion = "2017"
             }
         }
         else
         {
-            $vsVersion = "2017"
+            $vsVersion = "2019"
         }
 
         if ($null -ne $vsVersion)

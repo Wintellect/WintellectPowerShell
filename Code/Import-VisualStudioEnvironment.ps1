@@ -36,7 +36,7 @@ VS110COMNTOOLS.
 .PARAMETER VSVersion
 The version of Visual Studio you want to use. If left to the default, Latest, the
 script will look for the latest version of Visual Studio installed on the computer
-as the tools to use. Specify 2013, 2015, or 2017 for a specific version.
+as the tools to use. Specify 2013, 2015, 2017, or 2019 for a specific version.
 
 .PARAMETER Architecture
 The tools architecture to use. This defaults to the $env:PROCESSOR_ARCHITECTURE 
@@ -66,7 +66,7 @@ https://github.com/Wintellect/WintellectPowerShell
     param
     (
         [Parameter(Position=0)]
-        [ValidateSet("Latest", "2013", "2015", "2017")]
+        [ValidateSet("Latest", "2013", "2015", "2017", "2019")]
         [string] $VSVersion = "Latest", 
         [Parameter(Position=1)]
         [ValidateSet("x86", "amd64", "arm")]
@@ -74,6 +74,10 @@ https://github.com/Wintellect/WintellectPowerShell
         [string]$AdditionalOptions = ""
     )  
 
+    # VS2017+
+    $vswherePath = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+
+    # for VS2017 and older
     $versionSearchKey = "HKLM:\SOFTWARE\Wow6432Node\Microsoft\VisualStudio\SxS\VS7"
     if ([IntPtr]::size -ne 8)
     {
@@ -87,20 +91,32 @@ https://github.com/Wintellect/WintellectPowerShell
 
     if ($VSVersion -eq 'Latest')
     {
-        # Find the largest number in the install lookup directory and that will
-        # be the latest version.
-        $biggest = 0.0
-        Get-RegistryKeyPropertiesAndValues $versionSearchKey  | 
-            ForEach-Object { 
-                                if ([System.Convert]::ToDecimal($_.Property, [CultureInfo]::InvariantCulture) -gt `
-                                    [System.Convert]::ToDecimal($biggest, [CultureInfo]::InvariantCulture))
-                                {
-                                    $biggest = $_.Property
-                                    $vsDirectory = $_.Value 
-                                }
-                            }  
+        if (Test-Path -PathType Leaf $vswherePath)
+        {
+            $latestVSInfo = & $vswherePath -latest -legacy -format json | ConvertFrom-Json
+            if ($latestVSInfo)
+            {
+                $usingVersion = [System.Convert]::ToDecimal(($latestVSInfo.installationVersion -replace "^(\d+\.\d+)[^\d].*", "`$1"), [CultureInfo]::InvariantCulture)
+                $vsDirectory = $latestVSInfo.installationPath
+            }
+        }
+        else
+        {
+            # Find the largest number in the install lookup directory and that will
+            # be the latest version.
+            $biggest = 0.0
+            Get-RegistryKeyPropertiesAndValues $versionSearchKey  | 
+                ForEach-Object { 
+                                    if ([System.Convert]::ToDecimal($_.Property, [CultureInfo]::InvariantCulture) -gt `
+                                        [System.Convert]::ToDecimal($biggest, [CultureInfo]::InvariantCulture))
+                                    {
+                                        $biggest = $_.Property
+                                        $vsDirectory = $_.Value 
+                                    }
+                                }  
 
-        $usingVersion = $biggest
+            $usingVersion = $biggest
+        }
     }
     else
     {
@@ -109,12 +125,22 @@ https://github.com/Wintellect/WintellectPowerShell
                         "2013" { "12.0" }
                         "2015" { "14.0" }
                         "2017" { "15.0" }
+                        "2019" { "16.0" }
                         default { throw "Unknown version of Visual Studio!" }
                     }
 
         $usingVersion = [System.Convert]::ToDecimal($propVal, [CultureInfo]::InvariantCulture)
 
-        if (Test-PathReg -Path $versionSearchKey -Property $propVal)
+        if (Test-Path -PathType Leaf $vswherePath)
+        {
+            $vsInfo = & $vswherePath -version "[${usingVersion},$($usingVersion + 1))" -legacy -format json | ConvertFrom-Json
+            if ($vsInfo)
+            {
+                $usingVersion = [System.Convert]::ToDecimal(($vsInfo.installationVersion -replace "^(\d+\.\d+)[^\d].*", "`$1"), [CultureInfo]::InvariantCulture)
+                $vsDirectory = $vsInfo.installationPath
+            }
+        }
+        elseif (Test-PathReg -Path $versionSearchKey -Property $propVal)
         {
             $vsDirectory = (Get-ItemProperty -Path $versionSearchKey -WarningAction SilentlyContinue).$propVal
         }
