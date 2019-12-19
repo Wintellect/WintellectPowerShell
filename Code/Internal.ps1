@@ -94,7 +94,7 @@ function Get-RegistryKeyPropertiesAndValues
 function LatestVSRegistryKeyVersion
 {
     # 2017+
-    $vswherePath = "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe"
+    $vswherePath = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
     # 2017 and older
     $versionSearchKey = "HKLM:\SOFTWARE\Wow6432Node\Microsoft\VisualStudio\SxS\VS7"
     if ([IntPtr]::size -ne 8)

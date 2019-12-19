@@ -1,4 +1,4 @@
-﻿#requires -version 5.0
+#requires -version 5.0
 ###############################################################################
 # WintellectPowerShell Module
 # Copyright (c) 2010-2017 - John Robbins/Wintellect
@@ -75,7 +75,7 @@ https://github.com/Wintellect/WintellectPowerShell
     )  
 
     # VS2017+
-    $vswherePath = "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe"
+    $vswherePath = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
 
     # for VS2017 and older
     $versionSearchKey = "HKLM:\SOFTWARE\Wow6432Node\Microsoft\VisualStudio\SxS\VS7"
